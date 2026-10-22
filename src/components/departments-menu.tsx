@@ -8,13 +8,35 @@ import { CategoryIcon } from "./category-icon";
 
 type Dept = { slug: string; name: string; count: number };
 
-// "Todos os departamentos" (desktop): lista vertical que abre por clique/Enter, fecha com Esc
-// ou clique fora. Na home a mesma lista já aparece aberta ao lado do banner (DepartmentsList).
+/** id do menu lateral da home; enquanto ele está à vista, o botão do cabeçalho vira só um título */
+export const SIDEBAR_ID = "departamentos-lateral";
+
+// "Departamentos" (desktop): lista vertical que abre por clique/Enter, fecha com Esc ou clique
+// fora. Na home a mesma lista já aparece aberta ao lado do banner: ali, enquanto ela está à
+// vista, o botão não abriria nada de novo, então vira título sem seta. Ao rolar a página e o
+// menu lateral sumir, a seta aparece e o botão passa a abrir a lista.
 export function DepartmentsMenu({ departments }: { departments: Dept[] }) {
   const pathname = usePathname();
   const [openOn, setOpenOn] = useState<string | null>(null);
-  const open = openOn === pathname; // fecha sozinho ao trocar de página
+  // palpite inicial pela rota (evita a seta piscar na home); o observer confirma
+  const [sidebarOn, setSidebarOn] = useState<{ path: string; visible: boolean } | null>(null);
+  const sidebarVisible = sidebarOn?.path === pathname ? sidebarOn.visible : pathname === "/";
+  const open = openOn === pathname && !sidebarVisible; // fecha sozinho ao trocar de página
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sidebar = document.getElementById(SIDEBAR_ID);
+    // fora da home não há menu lateral: o palpite pela rota (false) já vale
+    if (!sidebar) return;
+    // "à vista" = quase inteiro abaixo da faixa amarela fixa
+    const bar = ref.current?.closest(".sticky")?.getBoundingClientRect().height ?? 64;
+    const io = new IntersectionObserver(([entry]) => setSidebarOn({ path: pathname, visible: entry.intersectionRatio >= 0.85 }), {
+      rootMargin: `-${Math.round(bar)}px 0px 0px 0px`,
+      threshold: [0, 0.85, 1],
+    });
+    io.observe(sidebar);
+    return () => io.disconnect();
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -27,6 +49,16 @@ export function DepartmentsMenu({ departments }: { departments: Dept[] }) {
       document.removeEventListener("mousedown", onClick);
     };
   }, [open]);
+
+  if (sidebarVisible)
+    return (
+      <div ref={ref} className="w-68 shrink-0">
+        <p className="flex min-h-12 w-full items-center gap-3 rounded-t-lg bg-white px-4 text-sm font-bold tracking-wide text-ink uppercase">
+          <Menu className="size-5" aria-hidden="true" />
+          Departamentos
+        </p>
+      </div>
+    );
 
   return (
     <div ref={ref} className="relative w-68 shrink-0">

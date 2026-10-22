@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CategoryIcon } from "@/components/category-icon";
-import { DepartmentsList } from "@/components/departments-menu";
+import { DepartmentsList, SIDEBAR_ID } from "@/components/departments-menu";
 import { Price } from "@/components/price";
 import { ProductCard } from "@/components/product-card";
 import { departments } from "@/components/site-header";
@@ -27,7 +27,7 @@ export default function HomePage() {
       {/* ---------- banner + departamentos ---------- */}
       <section className="container-site pt-3 lg:pt-0" aria-labelledby="chamada">
         <div className="grid gap-3 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-stretch">
-          <nav aria-label="Departamentos" className="hidden rounded-b-lg bg-white shadow-[0_6px_16px_rgb(0_0_0/0.08)] ring-1 ring-line lg:block">
+          <nav id={SIDEBAR_ID} aria-label="Departamentos" className="hidden rounded-b-lg bg-white shadow-[0_6px_16px_rgb(0_0_0/0.08)] ring-1 ring-line lg:block">
             <Suspense fallback={null}>
               <DepartmentsList departments={departments} />
             </Suspense>
