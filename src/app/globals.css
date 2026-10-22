@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+/* Sinopar Ferramentas — paleta tirada das cores da marca (amarelo, preto e branco).
+   - Base branca e neutra: a foto do produto é que dá cor à página.
+   - Amarelo (--action) fica reservado para "Adicionar ao carrinho" e "Finalizar compra";
+     fora disso aparece só no logo e em detalhes pequenos sobre o preto.
+   - Vermelho (--discount) só para desconto. Não reutilizar em erro nem em destaque.
+   - Estoque: verde (disponível), âmbar escuro (poucas unidades), cinza (esgotado).
+   Contraste conferido (WCAG 2.2 AA): preto/amarelo 11,7:1 · muted/branco 6,8:1 ·
+   desconto/branco 6,1:1 · verde/branco 5,0:1 · âmbar/branco 6,8:1.
+   Obs.: o @tailwindcss/turbopack às vezes não recompila sozinho no `next dev`; se a cor não
+   mudar, salve este arquivo de novo ou apague a pasta .next. */
+
+:root {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --surface-2: #f4f4f2;
+  --surface-3: #efefed;
+  --ink: #111111;
+  --ink-soft: #2e2e2e;
+  --muted: #5b5b5b;
+  --line: #e2e2df;
+  --line-strong: #c9c9c5;
+
+  --black: #111111;
+  --black-2: #1c1c1c;
+  --brand: #ffc20e;
+  --brand-soft: #fff7d6;
+  --action: #ffc20e;
+  --action-hover: #f2b300;
+
+  --discount: #c4141c;
+  --stock-ok: #15803d;
+  --stock-ok-soft: #e8f5ec;
+  --stock-low: #8a4b00;
+  --stock-low-soft: #fff4e0;
+  --stock-out: #5b5b5b;
+  --error: #b42318;
+  --error-soft: #fdecea;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-black: var(--black);
+  --color-black-2: var(--black-2);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-discount: var(--discount);
+  --color-stock-ok: var(--stock-ok);
+  --color-stock-ok-soft: var(--stock-ok-soft);
+  --color-stock-low: var(--stock-low);
+  --color-stock-low-soft: var(--stock-low-soft);
+  --color-stock-out: var(--stock-out);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-archivo);
+
+  /* tamanhos fluidos: nada de texto corrido abaixo de 16px */
+  --text-display: clamp(1.75rem, 1.2rem + 2.4vw, 3rem);
+  --text-title: clamp(1.375rem, 1.1rem + 1.1vw, 2rem);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+/* sobre o preto o contorno preto some: lá ele fica amarelo */
+.on-dark :focus-visible {
+  outline-color: var(--brand);
+}
+
+/* Movimento reduzido: cada componente troca o deslize por um fade curto
+   (motion-safe:/motion-reduce:); aqui só garantimos rolagem sem animação. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@utility container-site {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+/* título largo e pesado: Archivo esticada no eixo de largura */
+@utility font-wide {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+@utility price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-base font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+}
+/* só para comprar: adicionar ao carrinho, ir para o carrinho, finalizar */
+@utility btn-buy {
+  @apply btn bg-action font-bold text-black hover:bg-action-hover;
+}
+@utility btn-dark {
+  @apply btn bg-black text-white hover:bg-ink-soft;
+}
+@utility btn-outline {
+  @apply btn bg-bg text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-2;
+}
+
+@utility field {
+  @apply min-h-12 w-full rounded-lg border border-line-strong bg-bg px-3.5 text-base text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15 aria-invalid:border-error aria-invalid:ring-2 aria-invalid:ring-error/20;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-semibold text-ink-soft;
+}
+
+/* título de seção em caixa alta (estilo das grandes lojas de ferragens) */
+@utility section-title {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-size: clamp(1.25rem, 1.05rem + 0.8vw, 1.625rem);
+  line-height: 1.15;
+}
+
+@utility eyebrow {
+  @apply text-sm font-semibold text-muted;
+}
+
+/* trilhos de produtos que deslizam no celular e viram grade no desktop */
+@utility rail {
+  @apply -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-4 lg:overflow-visible lg:px-0;
+  scrollbar-width: thin;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes drawer-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
