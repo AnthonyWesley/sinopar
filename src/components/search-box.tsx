@@ -123,7 +123,7 @@ export function SearchBox({ items, categories, defaultValue = "" }: { items: Sea
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Buscar parafuso, broca, luva..."
+          placeholder="Buscar broca, disco, alicate..."
           autoComplete="off"
           role="combobox"
           aria-expanded={showSuggestions && results.length > 0}
@@ -172,7 +172,7 @@ export function SearchBox({ items, categories, defaultValue = "" }: { items: Sea
             ) : (
               <div className="p-4">
                 <p className="font-semibold">Nada encontrado para “{query.trim()}”.</p>
-                <p className="mt-1 text-sm text-muted">Tente um termo mais curto (ex.: “parafuso”) ou navegue por departamento:</p>
+                <p className="mt-1 text-sm text-muted">Tente um termo mais curto (ex.: “disco”) ou navegue por departamento:</p>
                 <CategoryChips categories={categories} onPick={() => setOpen(false)} />
               </div>
             ))}

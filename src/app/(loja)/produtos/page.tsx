@@ -5,7 +5,7 @@ import { Listing, ListingSkeleton } from "@/components/listing";
 
 export const metadata: Metadata = {
   title: "Produtos",
-  description: "Parafusos, porcas, buchas, ferramentas manuais e elétricas, brocas, discos e EPI com preço e estoque. Retirada em Sinop (MT) ou envio para todo o Brasil.",
+  description: "Brocas, serras copo, discos e abrasivos, alicates, ferramentas manuais, organizadores e EPI com preço e estoque. Retirada em Sinop (MT) ou envio para todo o Brasil.",
   alternates: { canonical: "/produtos" },
 };
 

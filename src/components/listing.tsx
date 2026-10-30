@@ -181,7 +181,7 @@ function EmptyResults({ filters, base }: { filters: ListingFilters; base: string
       <SearchX className="size-8 text-muted" aria-hidden="true" />
       <h2 className="mt-3 text-xl font-bold">Nenhum produto encontrado</h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-soft">
-        {filters.q && <li>Confira a grafia ou use um termo mais geral, como “parafuso” ou “broca”.</li>}
+        {filters.q && <li>Confira a grafia ou use um termo mais geral, como “disco” ou “broca”.</li>}
         <li>Tire alguns filtros para ampliar a busca.</li>
         <li>Não achou a medida? Fale com a gente: muitas vezes o item existe mas ainda não está no site.</li>
       </ul>

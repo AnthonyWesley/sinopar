@@ -9,7 +9,7 @@ import { JsonLd } from "@/components/json-ld";
 import { ProductCard } from "@/components/product-card";
 import { PurchasePanel } from "@/components/purchase-panel";
 import { ShippingCalculator } from "@/components/shipping-calculator";
-import { getCategory, getProduct, products, relatedProducts, segments } from "@/lib/catalog";
+import { getCategory, getProduct, NO_PHOTO, products, relatedProducts, segments } from "@/lib/catalog";
 import { returnsSummary, site } from "@/lib/site";
 
 export function generateStaticParams() {
@@ -24,7 +24,8 @@ export async function generateMetadata(props: PageProps<"/produto/[slug]">): Pro
     description: `${product.description} ${product.unit}. Retirada em ${site.city} (${site.state}) ou envio para todo o Brasil.`,
     // uma URL por produto: as variações não geram páginas próprias
     alternates: { canonical: `/produto/${product.slug}` },
-    openGraph: { images: [{ url: product.image, width: 800, height: 800, alt: product.name }] },
+    // sem foto real, fica a imagem padrão do site em vez do "Foto em breve"
+    ...(product.image !== NO_PHOTO && { openGraph: { images: [{ url: product.image, width: 800, height: 800, alt: product.name }] } }),
   };
 }
 
@@ -161,7 +162,7 @@ async function ProductContent({ params }: Pick<PageProps<"/produto/[slug]">, "pa
           "@type": "Product",
           name: product.name,
           description: product.description,
-          image: `${site.url}${product.image}`,
+          ...(product.image !== NO_PHOTO && { image: `${site.url}${product.image}` }),
           sku: product.variants[0].sku,
           category: category.name,
           offers: {

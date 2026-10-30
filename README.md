@@ -31,7 +31,7 @@ preditiva, carrinho, menus e checkout.
 |---|---|
 | `/` | Home: banner com menu lateral de departamentos, garantias, ofertas, vitrines por departamento, banners, orçamento para empresas, destaques, loja e serviços |
 | `/produtos` | Todos os produtos, com busca (`?q=`), filtros e ordenação |
-| `/produtos/[categoria]` | Departamento (7) |
+| `/produtos/[categoria]` | Departamento (9) |
 | `/produto/[slug]` | Produto: nome, foto, preço, variação, estoque, compra, entrega, trocas |
 | `/carrinho` | Carrinho com escolha de entrega e total |
 | `/checkout` | Compra sem cadastro (dados, entrega, pagamento) |
@@ -56,7 +56,7 @@ preditiva, carrinho, menus e checkout.
 | WhatsApp | variável `WHATSAPP_NUMBER` (sem ela os botões de WhatsApp somem) |
 | Frete (provider, opções, valores e prazos) | `src/lib/shipping.ts`, ver [`docs/integracao-frete.md`](docs/integracao-frete.md) |
 | Cobrança | `src/lib/asaas.ts` + `ASAAS_API_KEY` |
-| Logo | `src/components/logo.tsx` e `src/app/icon.svg` |
+| Logo | `public/images/logo-sinopar.webp` (oficial), `src/components/logo.tsx` e `src/app/icon.png` (favicon tirado do selo do logo) |
 | Fotos | `public/images/produtos/*.webp` |
 
 ## Decisões de design
@@ -91,7 +91,10 @@ preditiva, carrinho, menus e checkout.
 
 ## Premissas (confirmar com a Sinopar)
 
-1. **Catálogo inteiro**: os 27 produtos, variações, códigos (SKU), preços, estoques e descontos são fictícios.
+1. **Catálogo**: os itens vêm da planilha "LISTA DE ITENS SITE SINOPAR FERRAMENTAS.xlsx" (103 códigos agrupados em
+   61 produtos com variação, ex.: os 9 grãos do disco velcro). O SKU é o código do fornecedor e a quantidade por caixa
+   está guardada em `boxQty`, sem aparecer na loja. **Ainda são exemplo**: preços, estoques, descontos, descrições,
+   a divisão em 9 departamentos e o agrupamento das variações. Venda por unidade (não por caixa) também é suposição.
 2. **Frete**: cálculo por CEP com valores de exemplo. A transportadora (Correios, intermediário ou Mercado Livre)
    será decidida com o cliente, ver [`docs/integracao-frete.md`](docs/integracao-frete.md). Retirada grátis em Sinop e
    entrega local por R$ 15,00 (CEPs 7855x-xxx) também são suposições.
@@ -100,8 +103,8 @@ preditiva, carrinho, menus e checkout.
    Regras próprias da loja ainda não existem.
 5. **Endereço, telefone, e-mail, horário, CNPJ e Instagram**: desconhecidos, mostrados como "a confirmar".
 6. **Segmentos** (construção, rural, indústria, casa) atribuídos a cada produto por suposição.
-7. **Logo provisório** (porca sextavada amarela) e **fotos provisórias** do Wikimedia Commons, com créditos em
-   [`docs/creditos-imagens.md`](docs/creditos-imagens.md).
+7. **Fotos**: o logo é o oficial, mas só alguns produtos têm foto provisória do Wikimedia Commons (créditos em
+   [`docs/creditos-imagens.md`](docs/creditos-imagens.md)). O resto mostra "Foto em breve" até a Sinopar mandar as fotos.
 8. **Avisos ao cliente**: o site diz que "a loja avisa pelo celular" quando o pedido estiver separado.
    Não existe envio automático de e-mail nem de WhatsApp.
 
@@ -109,7 +112,7 @@ preditiva, carrinho, menus e checkout.
 
 - **Avaliações de clientes**: o brief proíbe inventar e a loja ainda não tem pedidos. Entram quando houver avaliações verificadas.
 - **Feed do Instagram**: não sabemos a conta, e seria preciso um token da API da Meta. Fica só o link no rodapé quando `site.instagram` for preenchido.
-- **Comparação de produtos e lista de desejos**: estão no brief, mas com 27 itens de exemplo não compensam o JavaScript extra.
+- **Comparação de produtos e lista de desejos**: estão no brief, mas com cerca de 60 produtos não compensam o JavaScript extra.
   Os filtros e a ordenação cobrem a decisão por enquanto.
 - **Integração de frete real**: depende da escolha da transportadora e do peso e das medidas dos produtos.
 - **Backend**: os pedidos ficam em memória e somem quando o servidor reinicia.

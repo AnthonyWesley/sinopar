@@ -1,13 +1,15 @@
-import { Anchor, Bolt, Disc3, Drill, Hammer, HardHat, Hexagon, Package, type LucideIcon } from "lucide-react";
+import { Disc3, Drill, Flame, HardHat, Package, Ruler, Scissors, Toolbox, Wrench, Zap, type LucideIcon } from "lucide-react";
 
 // Ícone de cada departamento (menu lateral, menu de departamentos e atalhos do celular).
 const icons: Record<string, LucideIcon> = {
-  parafusos: Bolt,
-  "porcas-e-arruelas": Hexagon,
-  "buchas-e-chumbadores": Anchor,
-  "ferramentas-manuais": Hammer,
-  "ferramentas-eletricas": Drill,
-  "brocas-e-discos": Disc3,
+  "brocas-e-serras-copo": Drill,
+  "discos-e-abrasivos": Disc3,
+  alicates: Scissors,
+  "ferramentas-manuais": Wrench,
+  medicao: Ruler,
+  "acessorios-parafusadeira": Zap,
+  organizacao: Toolbox,
+  macaricos: Flame,
   epi: HardHat,
 };
 

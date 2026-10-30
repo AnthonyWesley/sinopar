@@ -8,7 +8,7 @@ import { Price } from "@/components/price";
 import { ProductCard } from "@/components/product-card";
 import { departments } from "@/components/site-header";
 import { StockStatus } from "@/components/stock";
-import { categories, fromPrice, hasDiscount, products, segments, totalStock, type Product } from "@/lib/catalog";
+import { categories, fromPrice, hasDiscount, NO_PHOTO, products, segments, totalStock, type Product } from "@/lib/catalog";
 import { discountPercent, formatPrice } from "@/lib/format";
 import { paymentMethods, returnsSummary, site, whatsappLink } from "@/lib/site";
 
@@ -17,8 +17,8 @@ import { paymentMethods, returnsSummary, site, whatsappLink } from "@/lib/site";
 export default function HomePage() {
   const offers = products.filter(hasDiscount);
   // destaques: primeiro os marcados como destaque, depois o resto; sem repetir ofertas nem
-  // os produtos que já aparecem nas vitrines de parafusos e ferramentas manuais acima
-  const shown = new Set([...byCategory("parafusos").slice(0, 4), ...byCategory("ferramentas-manuais").slice(0, 5)].map((p) => p.slug));
+  // os produtos que já aparecem nas vitrines de discos e alicates acima
+  const shown = new Set([...byCategory("discos-e-abrasivos").slice(0, 4), ...byCategory("alicates").slice(0, 5)].map((p) => p.slug));
   const pool = products.filter((p) => !hasDiscount(p) && !shown.has(p.slug));
   const highlights = [...pool.filter((p) => p.featured), ...pool.filter((p) => !p.featured)].slice(0, 9);
 
@@ -38,7 +38,7 @@ export default function HomePage() {
                 {site.city}, {site.state} · envio para todo o Brasil
               </p>
               <h1 id="chamada" className="section-title mt-2 max-w-xl text-[clamp(1.5rem,1.15rem+1.2vw,2.125rem)] leading-[1.12]">
-                Parafusos e ferramentas para obra, campo e oficina
+                Ferramentas e acessórios para obra, campo e oficina
               </h1>
               <p className="mt-3 max-w-md text-ink-soft">Compre online e retire na loja ou receba em casa. Pix, boleto ou cartão.</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -122,16 +122,16 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ---------- parafusos (com atalhos por uso) ---------- */}
-      <CategorySection slug="parafusos" withSegments />
+      {/* ---------- discos e abrasivos (com atalhos por uso) ---------- */}
+      <CategorySection slug="discos-e-abrasivos" withSegments />
 
       {/* ---------- banners de departamento ---------- */}
       <section className="container-site mt-12" aria-label="Departamentos em destaque">
         <ul className="grid gap-4 md:grid-cols-3">
           {[
-            { slug: "ferramentas-manuais", title: "Martelos, chaves e alicates", cta: "Ver ferramentas", image: "martelo-unha" },
-            { slug: "brocas-e-discos", title: "Discos de corte e brocas", cta: "Ver brocas e discos", image: "disco-corte" },
-            { slug: "epi", title: "Capacetes, luvas e óculos", cta: "Ver EPI", image: "capacete" },
+            { slug: "brocas-e-serras-copo", title: "Brocas, serras copo e fresas", cta: "Ver brocas", image: "jogo-brocas" },
+            { slug: "ferramentas-manuais", title: "Chaves, extratores e soquetes", cta: "Ver ferramentas", image: "jogo-chaves-fenda" },
+            { slug: "epi", title: "Óculos, máscara e filtros", cta: "Ver EPI", image: "oculos-protecao" },
           ].map((b) => (
             <li key={b.slug}>
               <Link href={`/produtos/${b.slug}`} className="group relative flex min-h-48 overflow-hidden rounded-lg bg-surface-2 p-6 hover:bg-surface-3">
@@ -153,8 +153,8 @@ export default function HomePage() {
         </ul>
       </section>
 
-      {/* ---------- ferramentas manuais ---------- */}
-      <CategorySection slug="ferramentas-manuais" columns={5} />
+      {/* ---------- alicates ---------- */}
+      <CategorySection slug="alicates" columns={5} />
 
       {/* ---------- orçamento para empresas ---------- */}
       <section className="container-site mt-12" aria-labelledby="empresas">
@@ -308,7 +308,10 @@ function MiniCard({ product }: { product: Product }) {
 }
 
 function Highlights({ items }: { items: Product[] }) {
-  const [main, ...rest] = items;
+  // o cartão grande do meio vai para o primeiro destaque que já tem foto
+  const mainIndex = Math.max(0, items.findIndex((p) => p.image !== NO_PHOTO));
+  const main = items[mainIndex];
+  const rest = items.filter((_, i) => i !== mainIndex);
   const left = rest.slice(0, 4);
   const right = rest.slice(4, 8);
   const best = fromPrice(main);

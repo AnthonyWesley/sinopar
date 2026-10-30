@@ -6,9 +6,9 @@ const whatsapp = process.env.WHATSAPP_NUMBER?.replace(/\D/g, "") || null;
 export const site = {
   name: "Sinopar Ferramentas",
   shortName: "Sinopar",
-  tagline: "Parafusos e ferramentas em Sinop, MT",
+  tagline: "Ferramentas e acessórios em Sinop, MT",
   description:
-    "Parafusos, fixadores, ferramentas manuais e elétricas, brocas, discos e EPI para construtoras, produtores rurais, empresas e quem compra para casa. Sinop, Mato Grosso.",
+    "Brocas, serras copo, discos e abrasivos, alicates, ferramentas manuais, organizadores e EPI para construtoras, produtores rurais, empresas e quem compra para casa. Sinop, Mato Grosso.",
   url: process.env.SITE_URL ?? "http://localhost:3000",
   city: "Sinop",
   state: "MT",
