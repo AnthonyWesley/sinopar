@@ -1,9 +1,9 @@
-import { MapPin, MessageCircle } from "lucide-react";
+import { MessageCircle, Truck } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { categories, fromPrice, products } from "@/lib/catalog";
 import { searchKeywords } from "@/lib/listing";
-import { mainNav, site, whatsappLink } from "@/lib/site";
+import { mainNav, whatsappLink } from "@/lib/site";
 import { CartButton } from "./cart-button";
 import { DepartmentsMenu } from "./departments-menu";
 import { Logo } from "./logo";
@@ -24,7 +24,7 @@ export const departments = categories.map((c) => ({ slug: c.slug, name: c.name, 
 // Cabeçalho em duas faixas: branca (logo, menu, contato) e amarela fixa no topo
 // (departamentos, busca e carrinho), que continua visível ao rolar.
 export function SiteHeader() {
-  const wa = whatsappLink("Olá! Vim pelo site da Sinopar.");
+  const wa = whatsappLink("Olá! Vim pelo site da Fixa Store.");
   return (
     <>
       <p className="bg-surface-2 py-1.5 text-center text-sm text-muted">
@@ -46,9 +46,9 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-5 text-sm">
-            <Link href="/contato" className="hidden min-h-11 items-center gap-1.5 font-medium hover:underline xl:flex">
-              <MapPin className="size-4" aria-hidden="true" />
-              {site.city}, {site.state} · envio para todo o Brasil
+            <Link href="/servicos#entrega" className="hidden min-h-11 items-center gap-1.5 font-medium hover:underline xl:flex">
+              <Truck className="size-4" aria-hidden="true" />
+              Envio para todo o Brasil
             </Link>
             {wa && (
               <a href={wa} className="flex min-h-11 items-center gap-1.5 font-semibold hover:underline" target="_blank" rel="noopener noreferrer">

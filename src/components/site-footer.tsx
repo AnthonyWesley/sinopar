@@ -1,4 +1,4 @@
-import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
 import { categories } from "@/lib/catalog";
 import { mainNav, paymentMethods, site, whatsappLink } from "@/lib/site";
@@ -16,12 +16,6 @@ export function SiteFooter() {
           <Logo />
           <p className="mt-4 max-w-sm text-ink-soft">{site.description}</p>
           <ul className="mt-5 space-y-2.5">
-            <li className="flex gap-3">
-              <MapPin className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-              <span>
-                {site.street ?? <>Endereço {pending}</>}, {site.city} - {site.state}
-              </span>
-            </li>
             <li className="flex gap-3">
               <Phone className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
               {site.phone ? <a href={`tel:${site.phone.replace(/\D/g, "")}`} className="font-semibold">{site.phone}</a> : <span>Telefone {pending}</span>}
@@ -60,10 +54,9 @@ export function SiteFooter() {
           <p className="font-bold tracking-wide uppercase">Ajuda</p>
           <ul className="mt-3 space-y-0.5">
             {[
-              { href: "/servicos#entrega", label: "Entrega e retirada" },
+              { href: "/servicos#entrega", label: "Entrega" },
               { href: "/servicos#pagamento", label: "Formas de pagamento" },
               { href: "/servicos#trocas", label: "Trocas e devoluções" },
-              { href: "/servicos#orcamento", label: "Orçamento para empresas" },
               { href: "/carrinho", label: "Carrinho" },
             ].map((n) => (
               <li key={n.href}>
@@ -91,7 +84,7 @@ export function SiteFooter() {
       <div className="container-site">
         <div className="flex flex-col gap-4 rounded-lg bg-white p-5 shadow-[0_4px_16px_rgb(0_0_0/0.06)] sm:flex-row sm:items-center sm:justify-between">
           <p className="flex flex-wrap items-center gap-3">
-            <span className="font-bold tracking-wide uppercase">Siga a Sinopar:</span>
+            <span className="font-bold tracking-wide uppercase">Siga a Fixa Store:</span>
             {site.instagram ? (
               <a href={site.instagram} target="_blank" rel="noopener noreferrer" className="btn bg-surface-2 hover:bg-surface-3">
                 Instagram
@@ -112,7 +105,7 @@ export function SiteFooter() {
       </div>
 
       <p className="container-site py-6 text-sm text-muted">
-        © {site.name}. CNPJ a confirmar. Fotos de produtos provisórias: Wikimedia Commons, licenças Creative Commons (créditos em docs/creditos-imagens.md).
+        © {site.name}, nome fantasia de {site.legalName ?? "Sinopar (razão social a confirmar)"} · CNPJ {site.cnpj ?? "a confirmar"}. Fotos de produtos provisórias: Wikimedia Commons, licenças Creative Commons (créditos em docs/creditos-imagens.md).
       </p>
     </footer>
   );

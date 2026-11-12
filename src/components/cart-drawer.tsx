@@ -62,7 +62,7 @@ export function CartDrawer() {
                 </div>
                 <div className="flex justify-between gap-4 text-sm text-muted">
                   <dt>Entrega</dt>
-                  <dd className="text-right">Retirada grátis em Sinop ou entrega para todo o Brasil, calculada pelo CEP no carrinho</dd>
+                  <dd className="text-right">Entrega para todo o Brasil, calculada pelo CEP no carrinho</dd>
                 </div>
               </dl>
               <div className="mt-4 grid gap-2">

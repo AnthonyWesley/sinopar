@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardList, Clock, CreditCard, MapPin, MessageCircle, RotateCcw, ShieldCheck, Store, Truck, type LucideIcon } from "lucide-react";
+import { ArrowRight, CreditCard, MessageCircle, RotateCcw, ShieldCheck, Truck, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -10,7 +10,7 @@ import { departments } from "@/components/site-header";
 import { StockStatus } from "@/components/stock";
 import { categories, fromPrice, hasDiscount, NO_PHOTO, products, segments, totalStock, type Product } from "@/lib/catalog";
 import { discountPercent, formatPrice } from "@/lib/format";
-import { paymentMethods, returnsSummary, site, whatsappLink } from "@/lib/site";
+import { returnsSummary, whatsappLink } from "@/lib/site";
 
 // Fotos com fundo branco ganham mix-blend-multiply: o branco some sobre o cinza dos banners.
 
@@ -34,20 +34,14 @@ export default function HomePage() {
           </nav>
           <div className="relative grid min-h-64 overflow-hidden rounded-lg bg-surface-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:mt-3">
             <div className="relative z-10 flex flex-col justify-center p-5 sm:p-8 lg:p-10">
-              <p className="text-sm font-bold tracking-wide uppercase">
-                {site.city}, {site.state} · envio para todo o Brasil
-              </p>
+              <p className="text-sm font-bold tracking-wide uppercase">Envio para todo o Brasil</p>
               <h1 id="chamada" className="section-title mt-2 max-w-xl text-[clamp(1.5rem,1.15rem+1.2vw,2.125rem)] leading-[1.12]">
                 Ferramentas e acessórios para obra, campo e oficina
               </h1>
-              <p className="mt-3 max-w-md text-ink-soft">Compre online e retire na loja ou receba em casa. Pix, boleto ou cartão.</p>
+              <p className="mt-3 max-w-md text-ink-soft">Compre online e receba onde estiver. Pague com Pix ou cartão de crédito.</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Link href="/produtos" className="btn-dark min-h-12 px-6 uppercase">
                   Ver produtos
-                </Link>
-                <Link href="/servicos#orcamento" className="inline-flex min-h-11 items-center gap-1 font-semibold underline-offset-4 hover:underline">
-                  Orçamento para empresas
-                  <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -83,11 +77,11 @@ export default function HomePage() {
       </section>
 
       {/* ---------- garantias ---------- */}
-      <section className="container-site mt-5 lg:mt-4" aria-label="Por que comprar na Sinopar">
+      <section className="container-site mt-5 lg:mt-4" aria-label="Por que comprar na Fixa Store">
         <ul className="grid gap-3 md:grid-cols-3">
           {[
-            { icon: Truck, title: "Envio para todo o Brasil", text: `Ou retirada grátis na loja em ${site.city}. Frete calculado pelo CEP.` },
-            { icon: ShieldCheck, title: "Pagamento seguro", text: `${paymentMethods.join(", ")} na página segura do Asaas.` },
+            { icon: Truck, title: "Envio para todo o Brasil", text: "Frete e prazo calculados pelo CEP, antes de pedir qualquer dado." },
+            { icon: ShieldCheck, title: "Pagamento seguro", text: "Pix ou cartão de crédito na página segura do Asaas." },
             { icon: MessageCircle, title: "Atendimento", text: "Tire dúvidas de medida e aplicação antes de comprar." },
           ].map(({ icon: Icon, title, text }) => (
             <li key={title} className="flex items-center gap-4 rounded-lg bg-surface-2 px-4 py-3 lg:p-6">
@@ -155,26 +149,6 @@ export default function HomePage() {
 
       {/* ---------- alicates ---------- */}
       <CategorySection slug="alicates" columns={5} />
-
-      {/* ---------- orçamento para empresas ---------- */}
-      <section className="container-site mt-12" aria-labelledby="empresas">
-        <div className="relative overflow-hidden rounded-lg bg-surface-2">
-          <Image src="/images/produtos/serra-circular.webp" alt="" fill sizes="(min-width: 1024px) 60vw, 100vw" className="object-cover opacity-30 sm:left-auto sm:w-3/5 sm:opacity-100" />
-          <div className="absolute inset-y-0 left-0 hidden w-3/5 bg-gradient-to-r from-surface-2 from-55% to-transparent sm:block" aria-hidden="true" />
-          <div className="relative max-w-xl p-6 sm:p-10 lg:py-16">
-            <p className="text-sm font-bold tracking-wide text-ink-soft uppercase">Construtoras, fazendas e empresas</p>
-            <h2 id="empresas" className="section-title mt-2 text-[clamp(1.5rem,1.2rem+1.2vw,2.125rem)]">
-              Orçamento para compra em quantidade
-            </h2>
-            <p className="mt-3 text-lg text-ink-soft">
-              Mande a lista de materiais com medidas e quantidades. A gente devolve o orçamento com disponibilidade e combina a retirada ou a entrega.
-            </p>
-            <Link href="/servicos#orcamento" className="btn-dark mt-6 min-h-12 px-6 uppercase">
-              Pedir orçamento
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* ---------- destaques: um grande no meio ---------- */}
       {highlights.length > 0 && <Highlights items={highlights} />}
@@ -325,7 +299,7 @@ function Highlights({ items }: { items: Product[] }) {
       </h2>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-5">
         <article className="group col-span-2 flex flex-col rounded-lg bg-white p-5 ring-2 ring-brand lg:order-2 lg:col-span-1 lg:p-6">
-          <p className="text-center text-sm font-bold tracking-wide uppercase">Escolha da Sinopar</p>
+          <p className="text-center text-sm font-bold tracking-wide uppercase">Escolha da Fixa Store</p>
           <Link href={href} tabIndex={-1} aria-hidden="true" className="relative mx-auto mt-3 block aspect-square w-full max-w-sm overflow-hidden rounded-md">
             <Image src={main.image} alt="" fill sizes="(min-width: 1024px) 30vw, 90vw" className="object-cover transition-transform duration-200 motion-safe:group-hover:scale-[1.03]" />
           </Link>
@@ -358,40 +332,36 @@ function Highlights({ items }: { items: Product[] }) {
 }
 
 const services: { icon: LucideIcon; title: string; text: string; href: string }[] = [
-  { icon: ClipboardList, title: "Orçamento para empresas", text: "Mande a lista de materiais e receba o orçamento com disponibilidade.", href: "/servicos#orcamento" },
-  { icon: Store, title: "Retirada na loja", text: `Compre online e retire grátis em ${site.city}, sem pagar frete.`, href: "/servicos#entrega" },
   { icon: Truck, title: "Entrega no Brasil", text: "Frete e prazo calculados pelo CEP antes de pedir qualquer dado.", href: "/servicos#entrega" },
-  { icon: CreditCard, title: "Pagamento seguro", text: `${paymentMethods.join(", ")} na página do Asaas.`, href: "/servicos#pagamento" },
+  { icon: CreditCard, title: "Pagamento seguro", text: "Pix ou cartão de crédito na página do Asaas.", href: "/servicos#pagamento" },
   { icon: RotateCcw, title: "Trocas e devoluções", text: returnsSummary.short, href: "/servicos#trocas" },
 ];
 
 function StoreAndServices() {
-  const wa = whatsappLink("Olá! Quero saber o endereço e o horário da loja.");
+  const wa = whatsappLink("Olá! Vim pelo site da Fixa Store.");
   return (
     <section className="relative mt-16" aria-labelledby="nossa-loja">
       <div className="absolute inset-x-0 top-0 bottom-24 bg-surface-2" aria-hidden="true" />
       <div className="container-site relative pt-12">
         <div className="grid items-center gap-8 lg:grid-cols-2">
           <div>
-            <p className="text-sm font-bold tracking-wide text-ink-soft uppercase">Nossa loja</p>
+            <p className="text-sm font-bold tracking-wide text-ink-soft uppercase">Compra online</p>
             <h2 id="nossa-loja" className="section-title mt-2 text-[clamp(1.5rem,1.2rem+1.2vw,2.125rem)] normal-case">
-              Retire em {site.city} ou receba onde estiver
+              Receba onde estiver, em todo o Brasil
             </h2>
             <ul className="mt-6 space-y-4">
               <li className="flex gap-3">
-                <MapPin className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                <CreditCard className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
                 <span>
-                  <span className="block font-bold">{site.name}</span>
-                  <span className="text-ink-soft">
-                    {site.street ?? "Endereço a confirmar"}, {site.city} - {site.state}
-                  </span>
+                  <span className="block font-bold">Pix ou cartão de crédito</span>
+                  <span className="text-ink-soft">Pagamento na página segura do Asaas.</span>
                 </span>
               </li>
               <li className="flex gap-3">
-                <Clock className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                <MessageCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
                 <span>
-                  <span className="block font-bold">Horário</span>
-                  <span className="text-ink-soft">{site.hours ?? "A confirmar"}</span>
+                  <span className="block font-bold">Atendimento</span>
+                  <span className="text-ink-soft">Tire dúvidas de medida e aplicação antes de comprar.</span>
                 </span>
               </li>
               <li className="flex gap-3">
@@ -403,8 +373,8 @@ function StoreAndServices() {
               </li>
             </ul>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/contato" className="btn-dark min-h-12 uppercase">
-                Ver no mapa
+              <Link href="/produtos" className="btn-dark min-h-12 uppercase">
+                Ver produtos
               </Link>
               {wa && (
                 <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-outline min-h-12">
@@ -419,7 +389,7 @@ function StoreAndServices() {
           </div>
         </div>
 
-        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="mt-12 grid gap-4 sm:grid-cols-3">
           {services.map((s, i) => (
             <li key={s.title} className="flex flex-col items-center rounded-lg bg-white p-6 text-center shadow-[0_6px_20px_rgb(0_0_0/0.07)] ring-1 ring-line">
               <h3 className="font-bold">{s.title}</h3>

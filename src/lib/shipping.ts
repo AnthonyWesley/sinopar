@@ -11,19 +11,9 @@ export type ShippingQuote = {
   /** centavos */
   price: number;
   estimate: string;
-  /** precisa de endereço de entrega (tudo menos a retirada) */
-  needsAddress: boolean;
 };
 
 export type ShippingProvider = (cep: string, items: { qty: number }[]) => ShippingQuote[];
-
-export const pickup: ShippingQuote = {
-  id: "retirada",
-  label: "Retirar na loja em Sinop",
-  price: 0,
-  estimate: "Pronto em até 1 dia útil após o pagamento",
-  needsAddress: false,
-};
 
 export const onlyCepDigits = (cep: string) => cep.replace(/\D/g, "").slice(0, 8);
 export const isValidCep = (cep: string) => /^\d{8}$/.test(onlyCepDigits(cep)) && !/^0{8}$/.test(onlyCepDigits(cep));
@@ -48,23 +38,21 @@ const mockProvider: ShippingProvider = (cep, items) => {
   const count = items.reduce((n, i) => n + i.qty, 0);
   const t = tier(cep);
   const extra = Math.max(0, Math.ceil(count / 5) - 1) * 500; // volumes a mais
-  const quotes: ShippingQuote[] = [];
-  if (/^7855\d{4}$/.test(onlyCepDigits(cep)))
-    quotes.push({ id: "local-sinop", label: "Entrega local em Sinop", price: 1500, estimate: "Até 2 dias úteis", needsAddress: true });
-  quotes.push(
-    { id: "economica", label: "Entrega econômica", price: [1890, 2690, 3490, 4290][t] + extra, estimate: `Até ${[4, 6, 8, 12][t]} dias úteis`, needsAddress: true },
-    { id: "expressa", label: "Entrega expressa", price: [3290, 4590, 5890, 7490][t] + extra, estimate: `Até ${[2, 3, 4, 6][t]} dias úteis`, needsAddress: true },
-  );
-  return quotes;
+  return [
+    { id: "economica", label: "Entrega econômica", price: [1890, 2690, 3490, 4290][t] + extra, estimate: `Até ${[4, 6, 8, 12][t]} dias úteis` },
+    { id: "expressa", label: "Entrega expressa", price: [3290, 4590, 5890, 7490][t] + extra, estimate: `Até ${[2, 3, 4, 6][t]} dias úteis` },
+  ];
 };
 
 const provider: ShippingProvider = mockProvider;
 
-/** retirada sempre aparece; as entregas dependem de um CEP válido */
-export function quoteShipping(cep: string | null | undefined, items: { qty: number }[]) {
-  return [pickup, ...(cep && isValidCep(cep) ? provider(onlyCepDigits(cep), items) : [])];
+// Só entrega: a loja física não entra no site (sem retirada no balcão, pedido do cliente em 09/11/2026).
+/** as opções dependem de um CEP válido; sem CEP, nenhuma */
+export function quoteShipping(cep: string | null | undefined, items: { qty: number }[]): ShippingQuote[] {
+  return cep && isValidCep(cep) ? provider(onlyCepDigits(cep), items) : [];
 }
 
-export function pickQuote(quotes: ShippingQuote[], id: string | null | undefined) {
-  return quotes.find((q) => q.id === id) ?? pickup;
+/** a opção escolhida, ou a primeira; null enquanto não há CEP */
+export function pickQuote(quotes: ShippingQuote[], id: string | null | undefined): ShippingQuote | null {
+  return quotes.find((q) => q.id === id) ?? quotes[0] ?? null;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, Landmark, Loader2, QrCode, CreditCard, ShoppingCart } from "lucide-react";
+import { CircleAlert, Loader2, QrCode, CreditCard, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -15,7 +15,6 @@ const initial: CheckoutState = { errors: {}, values: {} };
 
 const payments = [
   { id: "PIX", label: "Pix", text: "Aprovação na hora. O QR Code aparece na próxima tela.", icon: QrCode },
-  { id: "BOLETO", label: "Boleto", text: "Compensação em até 3 dias úteis.", icon: Landmark },
   { id: "CREDIT_CARD", label: "Cartão de crédito", text: "Você digita o cartão na página segura do Asaas.", icon: CreditCard },
 ];
 
@@ -42,10 +41,10 @@ export function CheckoutForm() {
   const errorList = Object.entries(state.errors);
   const { subtotal } = cartTotals(lines);
   // as opções seguem o CEP que está no campo (é ele que vai para o servidor): enquanto o CEP
-  // estiver incompleto, só a retirada aparece, e não as opções do CEP anterior
+  // estiver incompleto, nenhuma opção aparece, e não as opções do CEP anterior
   const quotes = quoteShipping(cepDraft === null ? cep : null, lines);
   const selected = pickQuote(quotes, shipping);
-  const total = subtotal + selected.price;
+  const total = subtotal + (selected?.price ?? 0);
 
   // depois de um envio com erro, o foco vai para o resumo de erros (leitor de tela anuncia)
   useEffect(() => {
@@ -175,7 +174,7 @@ export function CheckoutForm() {
               </p>
             ) : (
               <p id="cep-dica" className="mt-1 text-sm text-muted">
-                {cep && cepDraft === null ? "Escolha como quer receber:" : "Informe o CEP para ver as entregas. Sem CEP, só a retirada na loja."}
+                {cep && cepDraft === null ? "Escolha como quer receber:" : "Informe o CEP para ver as opções de entrega."}
               </p>
             )}
           </div>
@@ -183,8 +182,7 @@ export function CheckoutForm() {
             <legend className="sr-only">Como quer receber</legend>
             <QuoteList quotes={quotes} selectable selected={shipping} name="entrega" />
           </fieldset>
-          {selected.needsAddress ? (
-            <div className="mt-4 grid gap-4 sm:grid-cols-6 motion-safe:animate-[fade-in_180ms]">
+          <div className="mt-4 grid gap-4 sm:grid-cols-6">
               <div className="sm:col-span-4">{field("rua", { autoComplete: "address-line1" })}</div>
               <div className="sm:col-span-2">{field("numero", { autoComplete: "off" })}</div>
               <div className="sm:col-span-3">{field("complemento", { label: "Complemento", required: false, autoComplete: "address-line2" })}</div>
@@ -206,10 +204,7 @@ export function CheckoutForm() {
                   </p>
                 )}
               </div>
-            </div>
-          ) : (
-            <p className="mt-3 text-muted">A loja avisa pelo celular informado quando o pedido estiver separado.</p>
-          )}
+          </div>
         </section>
 
         <section aria-labelledby="etapa-pagamento">
@@ -218,7 +213,7 @@ export function CheckoutForm() {
           </h2>
           <fieldset className="mt-4" aria-describedby={state.errors.pagamento ? "pagamento-erro" : undefined}>
             <legend className="sr-only">Forma de pagamento</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               {payments.map((p) => (
                 <label key={p.id} className="flex cursor-pointer gap-3 rounded-xl p-4 ring-1 ring-line-strong ring-inset has-[:checked]:ring-2 has-[:checked]:ring-black">
                   <input type="radio" name="pagamento" value={p.id} id={p.id === "PIX" ? "pagamento" : undefined} defaultChecked={(v("pagamento") || "PIX") === p.id} className="mt-1 size-5 accent-black" />

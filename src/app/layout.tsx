@@ -28,19 +28,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <JsonLd
           data={{
             "@context": "https://schema.org",
-            "@type": "HardwareStore",
+            "@type": "OnlineStore",
             name: site.name,
             description: site.description,
             url: site.url,
-            logo: `${site.url}/icon.svg`,
-            address: {
-              "@type": "PostalAddress",
-              addressLocality: site.city,
-              addressRegion: site.state,
-              addressCountry: "BR",
-              ...(site.street ? { streetAddress: site.street } : {}),
-              ...(site.postalCode ? { postalCode: site.postalCode } : {}),
-            },
+            logo: `${site.url}/icon.png`,
+            areaServed: "BR",
+            ...(site.legalName ? { legalName: site.legalName } : {}),
+            ...(site.cnpj ? { taxID: site.cnpj } : {}),
             ...(site.phone ? { telephone: site.phone } : {}),
             ...(site.instagram ? { sameAs: [site.instagram] } : {}),
           }}

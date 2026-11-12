@@ -8,7 +8,7 @@ import { ClearCart } from "./clear-cart";
 
 export const metadata: Metadata = { title: "Pedido recebido", robots: { index: false } };
 
-const paymentLabels = { PIX: "Pix", BOLETO: "Boleto", CREDIT_CARD: "Cartão de crédito" };
+const paymentLabels = { PIX: "Pix", CREDIT_CARD: "Cartão de crédito" };
 
 export default function OrderPlacedPage(props: PageProps<"/pedido-confirmado">) {
   return (
@@ -60,7 +60,7 @@ async function OrderDetails({ searchParams }: { searchParams: PageProps<"/pedido
           </>
         ) : (
           <p className="mt-2 rounded-lg bg-brand-soft p-3">
-            <strong>Modo demonstração:</strong> nenhuma cobrança foi gerada. Com a conta Asaas configurada, aqui aparece o botão para pagar (Pix, boleto ou cartão).
+            <strong>Modo demonstração:</strong> nenhuma cobrança foi gerada. Com a conta Asaas configurada, aqui aparece o botão para pagar (Pix ou cartão de crédito).
           </p>
         )}
       </section>
@@ -91,7 +91,7 @@ async function OrderDetails({ searchParams }: { searchParams: PageProps<"/pedido
           </div>
         </dl>
         <p className="mt-4 text-muted">
-          {order.shipping.address ? `Entrega em: ${order.shipping.address}. ` : "Retirada na loja. "}
+          {order.shipping.address ? `Entrega em: ${order.shipping.address}. ` : ""}
           {order.shipping.estimate}.
         </p>
       </section>

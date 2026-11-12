@@ -34,12 +34,12 @@ export function OrderSummary({
           <dd className="tabular-nums">{formatPrice(subtotal)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt>{option.label}</dt>
-          <dd className="shrink-0 tabular-nums">{option.price ? formatPrice(option.price) : "Grátis"}</dd>
+          <dt>{option ? option.label : "Frete"}</dt>
+          <dd className="shrink-0 tabular-nums">{option ? (option.price ? formatPrice(option.price) : "Grátis") : <span className="text-muted">informe o CEP</span>}</dd>
         </div>
         <div className="flex items-baseline justify-between border-t border-line-strong pt-3">
-          <dt className="text-lg font-bold">Total</dt>
-          <dd className="price text-2xl">{formatPrice(subtotal + option.price)}</dd>
+          <dt className="text-lg font-bold">{option ? "Total" : "Total sem frete"}</dt>
+          <dd className="price text-2xl">{formatPrice(subtotal + (option?.price ?? 0))}</dd>
         </div>
       </dl>
       {savings > 0 && <p className="mt-2 text-right text-sm font-semibold text-discount">Você economiza {formatPrice(savings)} com as ofertas</p>}

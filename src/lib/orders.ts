@@ -3,7 +3,7 @@ import "server-only";
 // Pedidos em memória: somem quando o servidor reinicia. Serve para a demonstração; com o
 // backend real, cada pedido vai para o banco (e para o ERP) antes de cobrar.
 
-export type PaymentMethod = "PIX" | "BOLETO" | "CREDIT_CARD";
+export type PaymentMethod = "PIX" | "CREDIT_CARD";
 
 export type Order = {
   /** número curto para a pessoa anotar */

@@ -26,7 +26,7 @@ export default function CheckoutLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <footer className="border-t border-line py-5 text-center text-sm text-muted">
-        {site.name} · {site.city}, {site.state} · Pagamentos processados pelo Asaas
+        {site.name} · Envio para todo o Brasil · Pagamentos processados pelo Asaas
       </footer>
     </>
   );

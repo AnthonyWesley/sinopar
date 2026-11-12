@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Store, Truck } from "lucide-react";
+import { MapPin, Truck } from "lucide-react";
 import { useId, useState } from "react";
 import { cart, useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
@@ -74,14 +74,14 @@ export function ShippingCalculator({ items, selectable = false, name = "frete" }
 }
 
 export function QuoteList({ quotes, selectable, selected, name }: { quotes: ShippingQuote[]; selectable: boolean; selected: string; name: string }) {
+  if (!quotes.length) return null;
   const current = quotes.some((q) => q.id === selected) ? selected : quotes[0].id;
   return (
     <ul className="mt-3 space-y-2" aria-label="Opções de entrega">
       {quotes.map((q) => {
-        const Icon = q.needsAddress ? Truck : Store;
         const body = (
           <>
-            <Icon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+            <Truck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
             <span className="flex-1">
               <span className="flex justify-between gap-3 font-semibold">
                 {q.label}

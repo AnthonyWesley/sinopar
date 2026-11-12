@@ -46,7 +46,7 @@ export function PurchasePanel({ product }: { product: Product }) {
       <div aria-live="polite">
         <Price price={variant.price} compareAt={variant.compareAt} size="lg" />
         <p className="mt-0.5 text-sm text-muted">
-          {product.unit} · Pix, boleto ou cartão
+          {product.unit} · Pix ou cartão de crédito
         </p>
       </div>
 

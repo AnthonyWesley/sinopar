@@ -2,7 +2,7 @@ import "server-only";
 import type { Order, PaymentMethod } from "./orders";
 
 // Integração com o Asaas (API v3): cria o cliente e a cobrança e devolve a fatura
-// (invoiceUrl), onde o comprador paga com Pix, boleto ou cartão na página segura do Asaas.
+// (invoiceUrl), onde o comprador paga com Pix ou cartão de crédito na página segura do Asaas.
 // Assim o site nunca recebe dados de cartão.
 // Sem ASAAS_API_KEY o checkout roda em modo demonstração e não chama nada.
 // A CONFIRMAR com a Sinopar: conta Asaas, vencimento do boleto (aqui: 3 dias) e se já
@@ -48,7 +48,7 @@ export async function createCharge(order: Omit<Order, "payment">, method: Paymen
     billingType: method,
     value: order.total / 100,
     dueDate: dueDate(3),
-    description: `Pedido ${order.id} - Sinopar Ferramentas`,
+    description: `Pedido ${order.id} - Fixa Store`,
     externalReference: order.id,
   });
   return { invoiceUrl: payment.invoiceUrl, demo: false };

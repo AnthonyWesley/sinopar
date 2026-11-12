@@ -21,7 +21,7 @@ export type CartLine = {
 type CartState = { lines: CartLine[]; shipping: string; cep: string | null; drawerOpen: boolean; lastAdded: string | null };
 
 const KEY = "sinopar-carrinho-v1";
-const empty: CartState = { lines: [], shipping: "retirada", cep: null, drawerOpen: false, lastAdded: null };
+const empty: CartState = { lines: [], shipping: "", cep: null, drawerOpen: false, lastAdded: null };
 
 let state: CartState = empty;
 let loaded = false;
@@ -32,7 +32,7 @@ function load() {
   loaded = true;
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) ?? "null");
-    if (saved && Array.isArray(saved.lines)) state = { ...empty, lines: saved.lines, shipping: saved.shipping ?? "retirada", cep: saved.cep ?? null };
+    if (saved && Array.isArray(saved.lines)) state = { ...empty, lines: saved.lines, shipping: saved.shipping === "retirada" ? "" : (saved.shipping ?? ""), cep: saved.cep ?? null };
   } catch {
     // armazenamento bloqueado ou corrompido: começa vazio
   }

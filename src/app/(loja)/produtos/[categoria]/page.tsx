@@ -14,8 +14,8 @@ export async function generateMetadata(props: PageProps<"/produtos/[categoria]">
   const category = getCategory((await props.params).categoria);
   if (!category) return {};
   return {
-    title: `${category.name} em ${site.city}`,
-    description: `${category.description} Compre online na ${site.name}, com retirada em ${site.city} (${site.state}) ou envio para todo o Brasil.`,
+    title: category.name,
+    description: `${category.description} Compre online na ${site.name}, com envio para todo o Brasil.`,
     alternates: { canonical: `/produtos/${category.slug}` },
   };
 }

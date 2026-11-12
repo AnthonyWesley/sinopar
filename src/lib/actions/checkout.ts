@@ -20,7 +20,7 @@ export type CheckoutState = {
 export type CartFix = { remove: string[]; update: { sku: string; unitPrice: number; compareAt?: number; maxQty: number }[] };
 
 const FIELDS = ["nome", "email", "celular", "documento", "entrega", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf", "pagamento"] as const;
-const PAYMENTS: PaymentMethod[] = ["PIX", "BOLETO", "CREDIT_CARD"];
+const PAYMENTS: PaymentMethod[] = ["PIX", "CREDIT_CARD"];
 
 export async function placeOrder(_prev: CheckoutState, form: FormData): Promise<CheckoutState> {
   const values = Object.fromEntries(FIELDS.map((f) => [f, String(form.get(f) ?? "").trim()])) as Record<(typeof FIELDS)[number], string>;
@@ -88,23 +88,21 @@ export async function placeOrder(_prev: CheckoutState, form: FormData): Promise<
   // ---------- entrega: o frete é recalculado aqui, o valor do navegador não vale ----------
   const quotes = quoteShipping(values.cep, lines);
   const shipping = pickQuote(quotes, values.entrega);
-  if (values.entrega && shipping.id !== values.entrega) errors.entrega = "A opção de entrega mudou. Confira o CEP e escolha de novo.";
-  let address: string | null = null;
-  if (shipping.needsAddress) {
-    if (!isValidCep(values.cep)) errors.cep = "Informe o CEP com 8 números.";
-    if (!values.rua) errors.rua = "Informe a rua.";
-    if (!values.numero) errors.numero = "Informe o número (ou “s/n”).";
-    if (!values.bairro) errors.bairro = "Informe o bairro.";
-    if (!values.cidade) errors.cidade = "Informe a cidade.";
-    if (!UFS.includes(values.uf)) errors.uf = "Escolha o estado.";
-    address = `${values.rua}, ${values.numero}${values.complemento ? ` (${values.complemento})` : ""} - ${values.bairro}, ${values.cidade} - ${values.uf}, CEP ${formatCep(values.cep)}`;
-  }
+  if (!isValidCep(values.cep)) errors.cep = "Informe o CEP com 8 números.";
+  else if (!shipping) errors.entrega = "Não há entrega para este CEP. Confira os números.";
+  else if (values.entrega && shipping.id !== values.entrega) errors.entrega = "A opção de entrega mudou. Confira o CEP e escolha de novo.";
+  if (!values.rua) errors.rua = "Informe a rua.";
+  if (!values.numero) errors.numero = "Informe o número (ou “s/n”).";
+  if (!values.bairro) errors.bairro = "Informe o bairro.";
+  if (!values.cidade) errors.cidade = "Informe a cidade.";
+  if (!UFS.includes(values.uf)) errors.uf = "Escolha o estado.";
+  const address = `${values.rua}, ${values.numero}${values.complemento ? ` (${values.complemento})` : ""} - ${values.bairro}, ${values.cidade} - ${values.uf}, CEP ${formatCep(values.cep)}`;
 
   // ---------- pagamento ----------
   const method = values.pagamento as PaymentMethod;
   if (!PAYMENTS.includes(method)) errors.pagamento = "Escolha a forma de pagamento.";
 
-  if (Object.keys(errors).length) return { errors, values };
+  if (Object.keys(errors).length || !shipping) return { errors, values };
 
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
   const base: Omit<Order, "payment"> = {

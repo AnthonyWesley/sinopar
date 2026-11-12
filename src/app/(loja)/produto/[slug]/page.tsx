@@ -21,7 +21,7 @@ export async function generateMetadata(props: PageProps<"/produto/[slug]">): Pro
   if (!product) return {};
   return {
     title: product.name,
-    description: `${product.description} ${product.unit}. Retirada em ${site.city} (${site.state}) ou envio para todo o Brasil.`,
+    description: `${product.description} ${product.unit}. Envio para todo o Brasil.`,
     // uma URL por produto: as variações não geram páginas próprias
     alternates: { canonical: `/produto/${product.slug}` },
     // sem foto real, fica a imagem padrão do site em vez do "Foto em breve"
@@ -85,7 +85,7 @@ async function ProductContent({ params }: Pick<PageProps<"/produto/[slug]">, "pa
 
           <section aria-labelledby="entrega" className="mt-6">
             <h2 id="entrega" className="sr-only">
-              Entrega e retirada
+              Entrega
             </h2>
             <ShippingCalculator items={[{ qty: 1 }]} />
           </section>
