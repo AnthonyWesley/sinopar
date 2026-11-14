@@ -15,7 +15,9 @@ import { returnsSummary, whatsappLink } from "@/lib/site";
 
 // Fotos com fundo branco ganham mix-blend-multiply: o branco some sobre o cinza dos banners.
 // As vitrines leem o catálogo do banco na requisição (ver catalog-data.ts), por isso cada uma
-// fica em <Suspense>; o resto da página é estático.
+// fica em <Suspense>; o resto da página é estático. Enquanto o catálogo não chega, cada vitrine
+// mostra um esqueleto com a mesma estrutura e altura da versão final, para a página não pular
+// quando ela aparece (ver "esqueletos" no fim do arquivo).
 
 export default function HomePage() {
   return (
@@ -24,7 +26,7 @@ export default function HomePage() {
       <section className="container-site pt-3 lg:pt-0" aria-labelledby="chamada">
         <div className="grid gap-3 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-stretch">
           <nav id={SIDEBAR_ID} aria-label="Departamentos" className="hidden rounded-b-lg bg-white shadow-[0_6px_16px_rgb(0_0_0/0.08)] ring-1 ring-line lg:block">
-            <Suspense fallback={null}>
+            <Suspense fallback={<DepartmentsSkeleton />}>
               <HomeDepartments />
             </Suspense>
           </nav>
@@ -94,12 +96,12 @@ export default function HomePage() {
       </section>
 
       {/* ---------- ofertas ---------- */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<OffersSkeleton />}>
         <Offers />
       </Suspense>
 
       {/* ---------- discos e abrasivos (com atalhos por uso) ---------- */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<CategorySkeleton slug="discos-e-abrasivos" withSegments />}>
         <CategorySection slug="discos-e-abrasivos" withSegments />
       </Suspense>
 
@@ -132,12 +134,12 @@ export default function HomePage() {
       </section>
 
       {/* ---------- alicates ---------- */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<CategorySkeleton slug="alicates" columns={5} />}>
         <CategorySection slug="alicates" columns={5} />
       </Suspense>
 
       {/* ---------- destaques: um grande no meio ---------- */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<HighlightsSkeleton />}>
         <HomeHighlights />
       </Suspense>
 
@@ -197,7 +199,7 @@ function SeeAll({ href, label }: { href: string; label: string }) {
 }
 
 /** título em aba amarela com a linha da seção, como nas vitrines por departamento */
-function TabTitle({ id, title, href, label }: { id: string; title: string; href: string; label: string }) {
+function TabTitle({ id, title, href, label }: { id?: string; title: string; href: string; label: string }) {
   return (
     <div className="mb-5 flex items-end justify-between gap-3 border-b-[3px] border-brand">
       <h2 id={id} className="section-title min-w-0 rounded-tl-md bg-brand py-2.5 pr-12 pl-5 text-lg [clip-path:polygon(0_0,calc(100%-2rem)_0,100%_100%,0_100%)] sm:text-xl">
@@ -428,6 +430,194 @@ function StoreAndServices() {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+// ---------- esqueletos (fallback das vitrines) ----------
+// Mesmas classes de layout das vitrines de verdade; o texto vira um bloco cinza com o texto
+// transparente dentro, para a altura das linhas ser a mesma da fonte real.
+
+function Bone({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-sm bg-surface-2 text-transparent motion-safe:animate-pulse">{children}</span>;
+}
+
+/** lista do menu lateral sem as contagens (os nomes dos departamentos são fixos) */
+function DepartmentsSkeleton() {
+  return (
+    <ul className="p-2" aria-hidden="true">
+      {categories.map((c) => (
+        <li key={c.slug} className="flex min-h-11 items-center gap-3 px-3 text-[0.9375rem]">
+          <CategoryIcon slug={c.slug} className="size-5 text-ink-soft" />
+          <span className="flex-1">{c.name}</span>
+        </li>
+      ))}
+      <li className="mt-1 border-t border-line pt-1">
+        <span className="flex min-h-11 items-center px-3 text-[0.9375rem] font-semibold">Ver todos os produtos</span>
+      </li>
+    </ul>
+  );
+}
+
+function PriceSkeleton() {
+  return (
+    <div className="flex flex-col">
+      <span className="h-5" />
+      <span className="h-5" />
+      <span className="price text-2xl leading-tight">
+        <Bone>R$ 00,00</Bone>
+      </span>
+    </div>
+  );
+}
+
+/** n linhas de nome de produto, cada uma com a altura de uma linha da fonte (1lh), sem quebrar */
+function Lines({ n }: { n: number }) {
+  return Array.from({ length: n }, (_, i) => (
+    <span key={i} className="flex h-[1lh] items-center">
+      <span className={`h-[0.8lh] rounded-sm bg-surface-2 motion-safe:animate-pulse ${i === n - 1 && n > 1 ? "w-1/2" : "w-11/12"}`} />
+    </span>
+  ));
+}
+
+function OffersSkeleton() {
+  return (
+    <section className="container-site mt-12" aria-label="Ofertas" aria-busy="true">
+      <div className="mb-5 flex items-end justify-between gap-3">
+        <h2 className="section-title">Ofertas</h2>
+        <SeeAll href="/produtos?ordem=menor-preco" label="Ver produtos" />
+      </div>
+      <ul className="grid gap-4 md:grid-cols-2" aria-hidden="true">
+        {[0, 1, 2, 3].map((i) => (
+          <li key={i}>
+            <div className="grid h-full grid-cols-[8rem_minmax(0,1fr)] items-center gap-4 rounded-lg bg-white p-4 ring-2 ring-line sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6 sm:p-5">
+              <div className="aspect-square rounded-md bg-surface-2" />
+              <div className="min-w-0">
+                <p className="text-[0.8125rem] font-medium tracking-wide uppercase">
+                  <Bone>Unidade</Bone>
+                </p>
+                {/* nome em até 2 linhas (line-clamp-2): reserva o máximo */}
+                <p className="mt-1 font-semibold">
+                  <Lines n={2} />
+                </p>
+                <div className="mt-1">
+                  <PriceSkeleton />
+                </div>
+                <p className="mt-1 text-sm font-semibold">
+                  <Bone>Em estoque</Bone>
+                </p>
+                <span className="btn mt-3 min-h-10 bg-surface-2 px-5 text-sm text-transparent uppercase">Ver oferta</span>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="flex h-full w-[min(66vw,15rem)] shrink-0 snap-start flex-col lg:w-full lg:min-w-0">
+      <div className="aspect-square rounded-lg bg-surface-2" />
+      <div className="flex flex-1 flex-col gap-1.5 pt-3">
+        <p className="text-[0.8125rem] font-medium tracking-wide uppercase">
+          <Bone>Unidade</Bone>
+        </p>
+        <p className="min-h-12 text-base leading-6 font-semibold">
+          <Lines n={2} />
+        </p>
+        <PriceSkeleton />
+        <p className="text-sm font-semibold">
+          <Bone>Em estoque</Bone>
+        </p>
+        <div className="mt-auto pt-1.5">
+          <span className="btn w-full bg-surface-2 text-transparent">Adicionar</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategorySkeleton({ slug, columns = 4, withSegments = false }: { slug: string; columns?: 4 | 5; withSegments?: boolean }) {
+  const category = categories.find((c) => c.slug === slug);
+  if (!category) return null;
+  const href = `/produtos/${slug}`;
+  return (
+    <section className="container-site mt-12" aria-label={category.name} aria-busy="true">
+      <TabTitle title={category.name} href={href} label={`Ver ${category.name.toLowerCase()}`} />
+      <div className={withSegments ? "grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)]" : ""} aria-hidden="true">
+        {withSegments && (
+          <div className="rounded-lg bg-surface-2 p-5">
+            <p className="text-sm font-bold tracking-wide uppercase">Compre por uso</p>
+            <ul className="mt-2 flex flex-wrap gap-x-4 lg:block">
+              {segments.map((s) => (
+                <li key={s.slug} className="flex min-h-10 items-center text-transparent">
+                  {s.name}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 flex min-h-10 items-center font-semibold">Ver tudo</p>
+          </div>
+        )}
+        <ul className={`rail ${columns === 5 ? "lg:grid-cols-5" : ""}`}>
+          {Array.from({ length: withSegments ? 4 : columns }, (_, i) => (
+            <li key={i} className="flex">
+              <CardSkeleton />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function MiniCardSkeleton() {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="aspect-square rounded-lg bg-surface-2" />
+      <p className="mt-2.5 min-h-12 leading-6 font-semibold">
+        <Lines n={2} />
+      </p>
+      <p className="price mt-1 text-xl">
+        <Bone>R$ 00,00</Bone>
+      </p>
+    </div>
+  );
+}
+
+function HighlightsSkeleton() {
+  return (
+    <section className="container-site mt-14" aria-label="Destaques da loja" aria-busy="true">
+      <h2 className="section-title mb-6 text-center">Destaques da loja</h2>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-5" aria-hidden="true">
+        <div className="col-span-2 flex flex-col rounded-lg bg-white p-5 ring-2 ring-line lg:order-2 lg:col-span-1 lg:p-6">
+          <p className="text-center text-sm font-bold tracking-wide uppercase">Escolha da Fixa Store</p>
+          <div className="mx-auto mt-3 aspect-square w-full max-w-sm rounded-md bg-surface-2" />
+          <p className="mt-4 text-[0.8125rem] font-medium tracking-wide uppercase">
+            <Bone>Unidade</Bone>
+          </p>
+          <p className="mt-1 text-lg font-semibold">
+            <Lines n={2} />
+          </p>
+          <div className="mt-1">
+            <PriceSkeleton />
+          </div>
+          <p className="mt-1 text-sm font-semibold">
+            <Bone>Em estoque</Bone>
+          </p>
+          <span className="btn mt-4 min-h-12 w-full bg-surface-2 text-transparent">Ver produto</span>
+        </div>
+        {["lg:order-1", "lg:order-3"].map((order) => (
+          <ul key={order} className={`col-span-2 grid grid-cols-2 gap-4 lg:col-span-1 ${order}`}>
+            {[0, 1, 2, 3].map((i) => (
+              <li key={i}>
+                <MiniCardSkeleton />
+              </li>
+            ))}
+          </ul>
+        ))}
       </div>
     </section>
   );
