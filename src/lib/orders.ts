@@ -1,34 +1,21 @@
 import "server-only";
+import { getDb } from "./server/db";
+import { getOrderByToken as getOrderByTokenFrom, type OrderRecord } from "./server/orders-repo";
 
-// Pedidos em memória: somem quando o servidor reinicia. Serve para a demonstração; com o
-// backend real, cada pedido vai para o banco (e para o ERP) antes de cobrar.
+// Pedidos ficam no banco (src/lib/server/orders-repo.ts para ler, stock.ts para gravar).
+// Aqui ficam os atalhos que a loja usa.
 
-export type PaymentMethod = "PIX" | "CREDIT_CARD";
+export type { PaymentMethod, OrderRecord } from "./server/orders-repo";
 
-export type Order = {
-  /** número curto para a pessoa anotar */
-  id: string;
-  /** chave secreta do link da confirmação: o número curto é fácil de adivinhar e a página mostra dados pessoais */
-  token: string;
-  createdAt: string;
-  customer: { name: string; email: string; phone: string; document: string };
-  shipping: { method: string; label: string; price: number; estimate: string; address: string | null };
-  payment: { method: PaymentMethod; invoiceUrl: string | null; demo: boolean };
-  lines: { sku: string; name: string; variant: string | null; qty: number; unitPrice: number }[];
-  subtotal: number;
-  total: number;
-};
-
-const store: Map<string, Order> = ((globalThis as { __sinoparOrders?: Map<string, Order> }).__sinoparOrders ??= new Map<string, Order>());
-
-export function saveOrder(order: Order) {
-  store.set(order.token, order);
+/**
+ * Pedido pela chave secreta do link da confirmação: o número curto é fácil de adivinhar e a
+ * página mostra dados pessoais.
+ */
+export function getOrderByToken(token: string): OrderRecord | null {
+  return getOrderByTokenFrom(getDb(), token);
 }
 
-export function getOrder(token: string) {
-  return store.get(token) ?? null;
-}
-
+/** número curto para a pessoa anotar */
 export function newOrderId() {
   return `SP-${Date.now().toString(36).slice(-4).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 }

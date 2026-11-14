@@ -1,5 +1,5 @@
 import "server-only";
-import type { Order, PaymentMethod } from "./orders";
+import type { Customer, PaymentMethod } from "./server/orders-repo";
 
 // Integração com o Asaas (API v3): cria o cliente e a cobrança e devolve a fatura
 // (invoiceUrl), onde o comprador paga com Pix ou cartão de crédito na página segura do Asaas.
@@ -33,8 +33,13 @@ function dueDate(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function createCharge(order: Omit<Order, "payment">, method: PaymentMethod) {
-  if (!apiKey) return { invoiceUrl: null, demo: true };
+export type Charge = { asaasPaymentId: string | null; invoiceUrl: string | null; demo: boolean };
+
+/** o que a cobrança precisa do pedido; `total` em centavos */
+export type ChargeOrder = { id: string; customer: Customer; total: number };
+
+export async function createCharge(order: ChargeOrder, method: PaymentMethod): Promise<Charge> {
+  if (!apiKey) return { asaasPaymentId: null, invoiceUrl: null, demo: true };
 
   const customer = await call<{ id: string }>("/customers", {
     name: order.customer.name,
@@ -51,5 +56,5 @@ export async function createCharge(order: Omit<Order, "payment">, method: Paymen
     description: `Pedido ${order.id} - Fixa Store`,
     externalReference: order.id,
   });
-  return { invoiceUrl: payment.invoiceUrl, demo: false };
+  return { asaasPaymentId: payment.id, invoiceUrl: payment.invoiceUrl, demo: false };
 }

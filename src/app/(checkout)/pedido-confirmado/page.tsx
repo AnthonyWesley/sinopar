@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { formatPrice } from "@/lib/format";
-import { getOrder } from "@/lib/orders";
+import { getOrderByToken } from "@/lib/orders";
 import { ClearCart } from "./clear-cart";
 
 export const metadata: Metadata = { title: "Pedido recebido", robots: { index: false } };
@@ -21,8 +21,8 @@ export default function OrderPlacedPage(props: PageProps<"/pedido-confirmado">) 
 }
 
 async function OrderDetails({ searchParams }: { searchParams: PageProps<"/pedido-confirmado">["searchParams"] }) {
-  const id = (await searchParams).pedido;
-  const order = typeof id === "string" ? getOrder(id) : null;
+  const token = (await searchParams).pedido;
+  const order = typeof token === "string" ? getOrderByToken(token) : null;
 
   if (!order)
     return (
@@ -74,7 +74,8 @@ async function OrderDetails({ searchParams }: { searchParams: PageProps<"/pedido
             <li key={l.sku} className="flex justify-between gap-4 py-2.5">
               <span>
                 {l.qty} × {l.name}
-                {l.variant && <span className="block text-sm text-muted">{l.variant}</span>}
+                {/* "Padrão" é o rótulo do produto sem variação: não há escolha para mostrar */}
+                {l.variant && l.variant !== "Padrão" && <span className="block text-sm text-muted">{l.variant}</span>}
               </span>
               <span className="tabular-nums">{formatPrice(l.qty * l.unitPrice)}</span>
             </li>

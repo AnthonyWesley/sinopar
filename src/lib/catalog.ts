@@ -921,15 +921,6 @@ export function getCategory(slug: string) {
   return categories.find((c) => c.slug === slug) ?? null;
 }
 
-/** o checkout ainda confere preço pelo seed; passa a ler do banco na tarefa 5 */
-export function findVariant(sku: string) {
-  for (const product of products) {
-    const variant = product.variants.find((v) => v.sku === sku);
-    if (variant) return { product, variant };
-  }
-  return null;
-}
-
 /** menor preço entre as variações com estoque (ou entre todas, se nada tiver estoque) */
 export function fromPrice(product: Product) {
   const inStock = product.variants.filter((v) => v.stock > 0);
