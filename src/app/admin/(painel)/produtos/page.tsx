@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BTN_PRIMARY, BTN_SECONDARY } from "@/components/admin/field";
 import { PageHeader } from "@/components/admin/page-header";
-import { Toast } from "@/components/admin/toast";
+import { FlashToast } from "@/components/admin/flash-toast";
 import { categories } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { listAdminProducts, type Situation } from "@/lib/server/catalog-repo";
@@ -130,7 +130,7 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
           })}
         </ul>
       )}
-      <Toast message={one(sp.excluido) ? "Produto excluído." : undefined} token={one(sp.excluido)} />
+      <FlashToast param="excluido" message={one(sp.excluido) ? "Produto excluído." : undefined} />
     </div>
   );
 }

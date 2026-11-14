@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
-import { Toast } from "@/components/admin/toast";
+import { FlashToast } from "@/components/admin/flash-toast";
 import { getAdminProduct } from "@/lib/server/catalog-repo";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/session";
@@ -46,7 +46,7 @@ export default async function EditProductPage(props: PageProps<"/admin/produtos/
         <ProductActions id={product.id} name={product.name} status={product.status} />
       </section>
       <ProductForm product={product} />
-      <Toast message={created ? "Produto cadastrado. Lance o estoque na tela Estoque." : undefined} token={created} />
+      <FlashToast param="criado" message={created ? "Produto cadastrado. Lance o estoque na tela Estoque." : undefined} />
     </div>
   );
 }
