@@ -21,8 +21,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Prova os binários nativos (musl) antes de buildar: se faltar o .node do better-sqlite3 ou do
+# sharp, o build da imagem falha aqui, e não o site no primeiro acesso.
+RUN node -e "require('better-sqlite3')(':memory:').prepare('select 1').get(); require('sharp')"
 # next build + scripts/build-cli.mjs (gera .next/standalone/cli.js, os comandos de emergência)
 RUN npm run build
+# E de novo na cópia rastreada que vai para o runtime (.next/standalone/node_modules).
+RUN cd .next/standalone && node -e "require('better-sqlite3')(':memory:').prepare('select 1').get(); require('sharp')"
 
 # ---------- runtime ----------
 # Diferente dos sites Vite (nginx servindo arquivos): aqui roda um servidor Node, porque
