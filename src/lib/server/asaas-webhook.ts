@@ -22,6 +22,43 @@ export function tokenMatches(given: string | null): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+/** Tira quebras de linha e limita o tamanho, para o que vem de fora não forjar linhas de log. */
+const clean = (v: unknown, max = 60) => String(v).replace(/[\r\n]+/g, " ").slice(0, max);
+
+const isTransient = (e: unknown) => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return code === "SQLITE_BUSY" || code === "SQLITE_LOCKED";
+};
+
+/**
+ * handleAsaasEvent sem deixar uma falha determinística travar a fila do Asaas: erro transitório do
+ * SQLite sobe (a rota responde 500 e o Asaas tenta de novo); qualquer outro vira 200 com um aviso
+ * na linha do tempo do pedido, para a equipe ver.
+ */
+export function processAsaasEvent(db: Db, body: unknown, now: Date): { status: number; slugs: string[] } {
+  try {
+    return handleAsaasEvent(db, body, now);
+  } catch (e) {
+    if (isTransient(e)) throw e;
+    const b = body as { event?: unknown; payment?: { externalReference?: unknown } } | null;
+    const event = clean(b?.event);
+    const orderId = clean(b?.payment?.externalReference, 200);
+    const message = clean(e instanceof Error ? e.message : e, 200);
+    console.log(`[asaas] ${event} ${clean(orderId)}: erro ${message}`);
+    try {
+      db.transaction(() => {
+        const o = db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId) as { status: string } | undefined;
+        if (!o) return;
+        db.prepare("INSERT INTO order_events (order_id, from_status, to_status, note, user_id, at) VALUES (?,?,?,?,NULL,?)")
+          .run(orderId, o.status, o.status, `Aviso do Asaas não processado (${event}): ${message}`, now.toISOString());
+      }).immediate();
+    } catch (e2) {
+      if (isTransient(e2)) throw e2;
+    }
+    return { status: 200, slugs: [] };
+  }
+}
+
 export function handleAsaasEvent(db: Db, body: unknown, now: Date): { status: number; slugs: string[] } {
   const b = body as { id?: unknown; event?: unknown; payment?: { externalReference?: unknown } | null } | null;
   const id = b && typeof b === "object" ? b.id : undefined;
@@ -33,24 +70,24 @@ export function handleAsaasEvent(db: Db, body: unknown, now: Date): { status: nu
   }
   const known = CONFIRM.has(event) || event in EXPIRE || REFUND.has(event);
   if (!known) {
-    console.log(`[asaas] ${event} ${orderId}: ignorado (evento desconhecido)`);
+    console.log(`[asaas] ${clean(event)} ${clean(orderId)}: ignorado (evento desconhecido)`);
     return { status: 200, slugs: [] };
   }
   if (!db.prepare("SELECT 1 FROM orders WHERE id = ?").get(orderId)) {
-    console.log(`[asaas] ${event} ${orderId}: ignorado (pedido inexistente)`);
+    console.log(`[asaas] ${clean(event)} ${clean(orderId)}: ignorado (pedido inexistente)`);
     return { status: 200, slugs: [] };
   }
   if (CONFIRM.has(event)) {
     const r = confirmPayment(db, orderId, id, now, event);
-    console.log(`[asaas] ${event} ${orderId}: ${r.duplicate ? "duplicado" : r.status}`);
+    console.log(`[asaas] ${clean(event)} ${clean(orderId)}: ${r.duplicate ? "duplicado" : r.status}`);
     return { status: 200, slugs: r.slugs };
   }
   if (event in EXPIRE) {
     const r = expireOrder(db, orderId, EXPIRE[event], now);
-    console.log(`[asaas] ${event} ${orderId}: ${r.slugs.length ? "cancelado" : "sem efeito"}`);
+    console.log(`[asaas] ${clean(event)} ${clean(orderId)}: ${r.slugs.length ? "cancelado" : "sem efeito"}`);
     return { status: 200, slugs: r.slugs };
   }
   flagRefund(db, orderId, id, now, event);
-  console.log(`[asaas] ${event} ${orderId}: estorno sinalizado`);
+  console.log(`[asaas] ${clean(event)} ${clean(orderId)}: estorno sinalizado`);
   return { status: 200, slugs: [] };
 }

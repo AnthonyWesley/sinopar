@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { openDb, type Db } from "./db";
 import { addStock, attachCharge, createOrderWithReservation, type NewOrder } from "./stock";
 import { getOrderById } from "./orders-repo";
-import { handleAsaasEvent, tokenMatches } from "./asaas-webhook";
+import { handleAsaasEvent, processAsaasEvent, tokenMatches } from "./asaas-webhook";
 
 const NOW = new Date("2026-11-14T12:00:00.000Z");
 let db: Db;
@@ -120,5 +120,27 @@ describe("handleAsaasEvent", () => {
       ev("e", "", "SP-1"), { id: 1, event: "PAYMENT_CONFIRMED", payment: { externalReference: "SP-1" } }]) {
       expect(handleAsaasEvent(db, body, NOW)).toEqual({ status: 400, slugs: [] });
     }
+  });
+});
+
+describe("processAsaasEvent (falhas)", () => {
+  it("falha determinística: 200, sem mudar estoque, deixa aviso na linha do tempo", () => {
+    const id = place();
+    db.prepare("UPDATE variants SET reserved = 0 WHERE sku='SKU-A'").run(); // deriva: reserva sumiu
+    const r = processAsaasEvent(db, ev("evt_f1", "PAYMENT_CONFIRMED", id), NOW);
+    expect(r).toEqual({ status: 200, slugs: [] });
+    expect(variant()).toEqual({ stock: 5, reserved: 0 });
+    expect(getOrderById(db, id)!.status).toBe("aguardando");
+    const notes = db.prepare("SELECT note, from_status f, to_status t, user_id u FROM order_events WHERE order_id=? AND note LIKE '%não processado%'")
+      .all(id) as { note: string; f: string; t: string; u: number | null }[];
+    expect(notes).toHaveLength(1);
+    expect(notes[0].note).toContain("PAYMENT_CONFIRMED");
+    expect(notes[0]).toMatchObject({ f: "aguardando", t: "aguardando", u: null });
+  });
+
+  it("erro SQLITE_BUSY é repassado para o Asaas tentar de novo", () => {
+    const busy = Object.assign(new Error("database is locked"), { code: "SQLITE_BUSY" });
+    const fake = { prepare: () => { throw busy; } } as unknown as Db;
+    expect(() => processAsaasEvent(fake, ev("e", "PAYMENT_CONFIRMED", "SP-1"), NOW)).toThrow(busy);
   });
 });
