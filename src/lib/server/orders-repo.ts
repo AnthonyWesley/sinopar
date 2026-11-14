@@ -120,3 +120,13 @@ export function getOrderEvents(db: Db, orderId: string): OrderEvent[] {
     )
     .all(orderId) as OrderEvent[];
 }
+
+/** Quantos pedidos há em cada etapa (etapa sem pedido vem com 0). */
+export function countOrdersByStatus(db: Db): Record<OrderStatus, number> {
+  const counts: Record<OrderStatus, number> = {
+    aguardando: 0, pago: 0, pago_sem_estoque: 0, separado: 0, enviado: 0, entregue: 0, cancelado: 0,
+  };
+  const rows = db.prepare("SELECT status, COUNT(*) AS n FROM orders GROUP BY status").all() as { status: OrderStatus; n: number }[];
+  for (const r of rows) if (r.status in counts) counts[r.status] = r.n;
+  return counts;
+}

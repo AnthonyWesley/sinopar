@@ -232,16 +232,22 @@ export function attachCharge(
   if (r.changes !== 1) throw new Error(`Pedido ${orderId} não encontrado.`);
 }
 
+/**
+ * `actor`: quem confirmou à mão no painel (pedido de demonstração ou Asaas desligado). Sem ele,
+ * a confirmação é do Sistema (aviso do Asaas).
+ */
 export function confirmPayment(
   db: Db, orderId: string, eventId: string | null, now: Date, eventType = "PAYMENT_CONFIRMED",
+  actor?: { userId: number; note: string },
 ): { status: OrderStatus; slugs: string[]; duplicate: boolean } {
   return db.transaction(() => {
     const status = orderStatus(db, orderId);
     if (!recordPaymentEvent(db, eventId, orderId, eventType, now)) return { status, slugs: [], duplicate: true };
     if (status === "aguardando") {
       const lines = orderLines(db, orderId);
-      sell(db, lines, orderId, "pagamento confirmado", null, now);
-      setStatus(db, orderId, status, "pago", "Pagamento confirmado", null, now);
+      const by = actor?.userId ?? null;
+      sell(db, lines, orderId, actor ? actor.note : "pagamento confirmado", by, now);
+      setStatus(db, orderId, status, "pago", actor ? actor.note : "Pagamento confirmado", by, now);
       return { status: "pago" as OrderStatus, slugs: slugsOf(lines), duplicate: false };
     }
     // Opção A só vale para pedido cancelado antes de pago (vencido, sem cobrança, cancelado aguardando).
@@ -332,6 +338,21 @@ export function moveStage(
     const code = to === "enviado" ? tracking?.trim() || null : null;
     if (code) db.prepare("UPDATE orders SET tracking_code = ? WHERE id = ?").run(code, orderId);
     setStatus(db, orderId, from, to, code ? `Rastreio: ${code}` : null, userId, now);
+  }).immediate();
+}
+
+/** Guarda (ou troca) o código de rastreio de um pedido enviado ou entregue, com registro no pedido. */
+export function setTracking(db: Db, orderId: string, tracking: string, userId: number | null, now: Date): void {
+  db.transaction(() => {
+    const status = orderStatus(db, orderId);
+    if (status !== "enviado" && status !== "entregue") {
+      throw new Error("O código de rastreio é informado ao marcar como enviado.");
+    }
+    const code = tracking.trim();
+    if (!code) throw new Error("Informe o código de rastreio.");
+    db.prepare("UPDATE orders SET tracking_code = ? WHERE id = ?").run(code, orderId);
+    db.prepare("INSERT INTO order_events (order_id, from_status, to_status, note, user_id, at) VALUES (?,?,?,?,?,?)")
+      .run(orderId, status, status, `Rastreio: ${code}`, userId, iso(now));
   }).immediate();
 }
 
