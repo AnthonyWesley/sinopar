@@ -82,11 +82,22 @@ export const KIND_LABEL: Record<MovementKind, string> = {
 };
 
 /**
- * Quantidade com sinal, do ponto de vista do estoque disponível: ajuste já vem com sinal;
- * entrada e devolução somam; reserva e venda tiram; liberação devolve ao disponível.
+ * Efeito de uma movimentação no Estoque e no Reservado, como stock.ts aplica cada tipo
+ * (qty é sempre positivo, menos em ajuste, que guarda contado - anterior).
  */
-export function signedQty(kind: string, qty: number): number {
-  if (kind === "reserva" || kind === "venda") return -Math.abs(qty);
-  if (kind === "ajuste") return qty;
-  return Math.abs(qty);
+export function movementEffect(kind: string, qty: number): { stock: number; reserved: number } {
+  switch (kind) {
+    case "entrada":
+    case "devolucao":
+    case "ajuste":
+      return { stock: qty, reserved: 0 };
+    case "reserva":
+      return { stock: 0, reserved: qty };
+    case "liberacao":
+      return { stock: 0, reserved: -qty };
+    case "venda":
+      return { stock: -qty, reserved: -qty };
+    default:
+      return { stock: 0, reserved: 0 };
+  }
 }

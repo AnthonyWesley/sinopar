@@ -42,8 +42,12 @@ export async function setStockAction(_prev: StockFormState, form: FormData): Pro
   const counted = whole(text(form, "counted"));
   if (!Number.isSafeInteger(counted)) return { error: "Informe um número inteiro, zero ou mais." };
   if (!text(form, "reason").trim()) return { error: "Informe o motivo." };
-  const r = setStock(getDb(), text(form, "sku"), counted, text(form, "reason"), auth.user.id, new Date());
-  if (!r.ok) return { error: r.error };
-  invalidate(r.slugs);
-  return { message: "Estoque ajustado." };
+  try {
+    const r = setStock(getDb(), text(form, "sku"), counted, text(form, "reason"), auth.user.id, new Date());
+    if (!r.ok) return { error: r.error };
+    invalidate(r.slugs);
+    return { message: "Estoque ajustado." };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Não foi possível ajustar o estoque." };
+  }
 }

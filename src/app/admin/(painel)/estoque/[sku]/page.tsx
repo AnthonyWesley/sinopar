@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
 import { Panel } from "@/components/admin/panel";
 import { getDb } from "@/lib/server/db";
-import { getStockRow, KIND_LABEL, listMovements, signedQty, type MovementKind } from "@/lib/server/stock-repo";
+import { getStockRow, KIND_LABEL, listMovements, movementEffect, type MovementKind } from "@/lib/server/stock-repo";
 import { requireUser } from "@/lib/session";
 import { StockForms } from "./stock-forms";
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Estoque do produto" };
 
 const when = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
-const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+const signed = (n: number) => (n === 0 ? "—" : n > 0 ? `+${n}` : String(n));
 
 function decode(param: string): string | null {
   try {
@@ -71,7 +71,8 @@ export default async function StockSkuPage(props: PageProps<"/admin/estoque/[sku
                 <tr className="border-b border-line text-sm text-muted">
                   <th className="py-2 pr-3 font-medium">Data</th>
                   <th className="py-2 pr-3 font-medium">Tipo</th>
-                  <th className="py-2 pr-3 text-right font-medium">Quantidade</th>
+                  <th className="py-2 pr-3 text-right font-medium">Estoque</th>
+                  <th className="py-2 pr-3 text-right font-medium">Reservado</th>
                   <th className="py-2 pr-3 font-medium">Motivo</th>
                   <th className="py-2 pr-3 font-medium">Pedido</th>
                   <th className="py-2 font-medium">Quem</th>
@@ -82,7 +83,8 @@ export default async function StockSkuPage(props: PageProps<"/admin/estoque/[sku
                   <tr key={m.id}>
                     <td className="py-2 pr-3 whitespace-nowrap">{when(m.at)}</td>
                     <td className="py-2 pr-3">{KIND_LABEL[m.kind as MovementKind] ?? m.kind}</td>
-                    <td className="py-2 pr-3 text-right font-semibold tabular-nums">{signed(signedQty(m.kind, m.qty))}</td>
+                    <td className="py-2 pr-3 text-right font-semibold tabular-nums">{signed(movementEffect(m.kind, m.qty).stock)}</td>
+                    <td className="py-2 pr-3 text-right font-semibold tabular-nums">{signed(movementEffect(m.kind, m.qty).reserved)}</td>
                     <td className="py-2 pr-3 break-words">{m.reason ?? "—"}</td>
                     <td className="py-2 pr-3">{m.orderId ? <OrderLink id={m.orderId} /> : "—"}</td>
                     <td className="py-2">{m.userName ?? "Sistema"}</td>
@@ -93,9 +95,9 @@ export default async function StockSkuPage(props: PageProps<"/admin/estoque/[sku
             <ul className="divide-y divide-line md:hidden">
               {movements.map((m) => (
                 <li key={m.id} className="space-y-0.5 py-3">
-                  <p className="flex items-baseline justify-between gap-3">
-                    <span className="font-medium">{KIND_LABEL[m.kind as MovementKind] ?? m.kind}</span>
-                    <span className="text-lg font-bold tabular-nums">{signed(signedQty(m.kind, m.qty))}</span>
+                  <p className="font-medium">{KIND_LABEL[m.kind as MovementKind] ?? m.kind}</p>
+                  <p className="text-sm tabular-nums">
+                    Estoque <b>{signed(movementEffect(m.kind, m.qty).stock)}</b> · Reservado <b>{signed(movementEffect(m.kind, m.qty).reserved)}</b>
                   </p>
                   <p className="text-sm text-muted">
                     {when(m.at)} · {m.userName ?? "Sistema"}
