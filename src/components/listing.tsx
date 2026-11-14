@@ -1,6 +1,7 @@
 import { ArrowDownUp, SearchX, X } from "lucide-react";
 import Link from "next/link";
 import { categories, segments } from "@/lib/catalog";
+import { getCatalog } from "@/lib/catalog-data";
 import { applyFilters, listingHref, parseFilters, sortOptions, type ListingFilters } from "@/lib/listing";
 import { FilterDrawer } from "./filter-drawer";
 import { ProductCard } from "./product-card";
@@ -11,7 +12,7 @@ type RawParams = Record<string, string | string[] | undefined>;
 // a URL é compartilhável e o botão voltar do navegador desfaz o filtro.
 export async function Listing({ searchParams, base, category = null }: { searchParams: Promise<RawParams>; base: string; category?: string | null }) {
   const filters = parseFilters(await searchParams, category);
-  const results = applyFilters(filters);
+  const results = applyFilters(filters, await getCatalog());
   const chips = activeChips(filters, base, category);
 
   return (

@@ -1,7 +1,8 @@
 import { MessageCircle, Truck } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { categories, fromPrice, products } from "@/lib/catalog";
+import { categories, fromPrice, type Product } from "@/lib/catalog";
+import { getCatalog } from "@/lib/catalog-data";
 import { searchKeywords } from "@/lib/listing";
 import { mainNav, whatsappLink } from "@/lib/site";
 import { CartButton } from "./cart-button";
@@ -10,16 +11,27 @@ import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { SearchBox, type SearchItem } from "./search-box";
 
-const searchItems: SearchItem[] = products.map((p) => ({
-  slug: p.slug,
-  name: p.name,
-  image: p.image,
-  price: fromPrice(p).price,
-  category: categories.find((c) => c.slug === p.category)?.name ?? "",
-  keywords: searchKeywords(p),
-}));
+const searchItemsOf = (catalog: Product[]): SearchItem[] =>
+  catalog.map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    image: p.image,
+    price: fromPrice(p).price,
+    category: categories.find((c) => c.slug === p.category)?.name ?? "",
+    keywords: searchKeywords(p),
+  }));
 const categoryLinks = categories.map((c) => ({ slug: c.slug, name: c.name }));
-export const departments = categories.map((c) => ({ slug: c.slug, name: c.name, count: products.filter((p) => p.category === c.slug).length }));
+export const departmentsOf = (catalog: Product[]) =>
+  categories.map((c) => ({ slug: c.slug, name: c.name, count: catalog.filter((p) => p.category === c.slug).length }));
+
+// o catálogo vem do banco na requisição (ver catalog-data.ts): estas partes ficam em <Suspense>
+async function CatalogSearchBox() {
+  return <SearchBox items={searchItemsOf(await getCatalog())} categories={categoryLinks} />;
+}
+
+async function CatalogDepartmentsMenu() {
+  return <DepartmentsMenu departments={departmentsOf(await getCatalog())} />;
+}
 
 // Cabeçalho em duas faixas: branca (logo, menu, contato) e amarela fixa no topo
 // (departamentos, busca e carrinho), que continua visível ao rolar.
@@ -71,11 +83,14 @@ export function SiteHeader() {
                 </Link>
               }
             >
-              <DepartmentsMenu departments={departments} />
+              <CatalogDepartmentsMenu />
             </Suspense>
           </div>
           <div className="min-w-0 flex-1">
-            <SearchBox items={searchItems} categories={categoryLinks} />
+            {/* até o catálogo chegar, a caixa já funciona (envia a busca), só sem sugestões */}
+            <Suspense fallback={<SearchBox items={[]} categories={categoryLinks} />}>
+              <CatalogSearchBox />
+            </Suspense>
           </div>
           <CartButton />
         </div>

@@ -9,15 +9,19 @@ import { JsonLd } from "@/components/json-ld";
 import { ProductCard } from "@/components/product-card";
 import { PurchasePanel } from "@/components/purchase-panel";
 import { ShippingCalculator } from "@/components/shipping-calculator";
-import { getCategory, getProduct, NO_PHOTO, products, relatedProducts, segments } from "@/lib/catalog";
+import { getCategory, NO_PHOTO, products as seedProducts, relatedProducts, segments } from "@/lib/catalog";
+import { getCatalog, getProduct } from "@/lib/catalog-data";
 import { returnsSummary, site } from "@/lib/site";
 
+// Só amostras para o build validar a rota (com Cache Components, [] é erro de build). Não lê o
+// banco: o conteúdo do produto está em <Suspense> e passa por connection() (catalog-data.ts),
+// então o build gera só o esqueleto e o produto é lido na requisição, do cache.
 export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+  return seedProducts.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata(props: PageProps<"/produto/[slug]">): Promise<Metadata> {
-  const product = getProduct((await props.params).slug);
+  const product = await getProduct((await props.params).slug);
   if (!product) return {};
   return {
     title: product.name,
@@ -49,10 +53,11 @@ export default function ProductPage(props: PageProps<"/produto/[slug]">) {
 }
 
 async function ProductContent({ params }: Pick<PageProps<"/produto/[slug]">, "params">) {
-  const product = getProduct((await params).slug);
+  const product = await getProduct((await params).slug);
+  // o proxy já responde 404 a produto inexistente ou pausado; isto cobre a corrida entre os dois
   if (!product) notFound();
   const category = getCategory(product.category)!;
-  const related = relatedProducts(product);
+  const related = relatedProducts(product, await getCatalog());
   const prices = product.variants.map((v) => v.price);
 
   return (

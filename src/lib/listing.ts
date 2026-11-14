@@ -1,4 +1,4 @@
-import { categories, fromPrice, products, segments, totalStock, type Product, type Segment } from "./catalog";
+import { categories, fromPrice, segments, totalStock, type Product, type Segment } from "./catalog";
 import { score } from "./search";
 
 export const sortOptions = [
@@ -38,8 +38,8 @@ export function searchKeywords(p: Product) {
   return [category, p.description, p.variants.map((v) => `${v.label} ${v.sku}`).join(" ")].join(" ");
 }
 
-export function applyFilters(f: ListingFilters) {
-  let list = products.map((p) => ({ p, s: f.q ? score(f.q, { name: p.name, keywords: searchKeywords(p) }) : 1 }));
+export function applyFilters(f: ListingFilters, catalog: Product[]) {
+  let list = catalog.map((p) => ({ p, s: f.q ? score(f.q, { name: p.name, keywords: searchKeywords(p) }) : 1 }));
   list = list.filter(({ p, s }) => {
     if (s === 0) return false;
     if (f.category && p.category !== f.category) return false;

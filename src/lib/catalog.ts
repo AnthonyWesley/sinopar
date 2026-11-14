@@ -912,8 +912,8 @@ export const products: Product[] = [
 ];
 
 // ---------- consultas ----------
-// Funções síncronas sobre dados em memória. Com o catálogo real, viram chamadas à API/ERP
-// mantendo a mesma assinatura.
+// `products` acima é só o SEED do banco (src/lib/server/seed.ts). A loja lê o catálogo do banco
+// por src/lib/catalog-data.ts; as funções abaixo são puras sobre `Product`.
 
 export const LOW_STOCK = 5;
 
@@ -921,10 +921,7 @@ export function getCategory(slug: string) {
   return categories.find((c) => c.slug === slug) ?? null;
 }
 
-export function getProduct(slug: string) {
-  return products.find((p) => p.slug === slug) ?? null;
-}
-
+/** o checkout ainda confere preço pelo seed; passa a ler do banco na tarefa 5 */
 export function findVariant(sku: string) {
   for (const product of products) {
     const variant = product.variants.find((v) => v.sku === sku);
@@ -948,6 +945,6 @@ export function hasDiscount(product: Product) {
   return product.variants.some((v) => v.compareAt && v.compareAt > v.price);
 }
 
-export function relatedProducts(product: Product, limit = 4) {
-  return products.filter((p) => p.category === product.category && p.slug !== product.slug).slice(0, limit);
+export function relatedProducts(product: Product, catalog: Product[], limit = 4) {
+  return catalog.filter((p) => p.category === product.category && p.slug !== product.slug).slice(0, limit);
 }

@@ -6,22 +6,18 @@ import { CategoryIcon } from "@/components/category-icon";
 import { DepartmentsList, SIDEBAR_ID } from "@/components/departments-menu";
 import { Price } from "@/components/price";
 import { ProductCard } from "@/components/product-card";
-import { departments } from "@/components/site-header";
+import { departmentsOf } from "@/components/site-header";
 import { StockStatus } from "@/components/stock";
-import { categories, fromPrice, hasDiscount, NO_PHOTO, products, segments, totalStock, type Product } from "@/lib/catalog";
+import { categories, fromPrice, hasDiscount, NO_PHOTO, segments, totalStock, type Product } from "@/lib/catalog";
+import { getCatalog } from "@/lib/catalog-data";
 import { discountPercent, formatPrice } from "@/lib/format";
 import { returnsSummary, whatsappLink } from "@/lib/site";
 
 // Fotos com fundo branco ganham mix-blend-multiply: o branco some sobre o cinza dos banners.
+// As vitrines leem o catálogo do banco na requisição (ver catalog-data.ts), por isso cada uma
+// fica em <Suspense>; o resto da página é estático.
 
 export default function HomePage() {
-  const offers = products.filter(hasDiscount);
-  // destaques: primeiro os marcados como destaque, depois o resto; sem repetir ofertas nem
-  // os produtos que já aparecem nas vitrines de discos e alicates acima
-  const shown = new Set([...byCategory("discos-e-abrasivos").slice(0, 4), ...byCategory("alicates").slice(0, 5)].map((p) => p.slug));
-  const pool = products.filter((p) => !hasDiscount(p) && !shown.has(p.slug));
-  const highlights = [...pool.filter((p) => p.featured), ...pool.filter((p) => !p.featured)].slice(0, 9);
-
   return (
     <>
       {/* ---------- banner + departamentos ---------- */}
@@ -29,7 +25,7 @@ export default function HomePage() {
         <div className="grid gap-3 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-stretch">
           <nav id={SIDEBAR_ID} aria-label="Departamentos" className="hidden rounded-b-lg bg-white shadow-[0_6px_16px_rgb(0_0_0/0.08)] ring-1 ring-line lg:block">
             <Suspense fallback={null}>
-              <DepartmentsList departments={departments} />
+              <HomeDepartments />
             </Suspense>
           </nav>
           <div className="relative grid min-h-64 overflow-hidden rounded-lg bg-surface-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:mt-3">
@@ -98,26 +94,14 @@ export default function HomePage() {
       </section>
 
       {/* ---------- ofertas ---------- */}
-      {offers.length > 0 && (
-        <section className="container-site mt-12" aria-labelledby="ofertas">
-          <div className="mb-5 flex items-end justify-between gap-3">
-            <h2 id="ofertas" className="section-title">
-              Ofertas
-            </h2>
-            <SeeAll href="/produtos?ordem=menor-preco" label="Ver produtos" />
-          </div>
-          <ul className="grid gap-4 md:grid-cols-2">
-            {offers.slice(0, 4).map((p, i) => (
-              <li key={p.slug}>
-                <OfferCard product={p} priority={i < 2} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <Suspense fallback={null}>
+        <Offers />
+      </Suspense>
 
       {/* ---------- discos e abrasivos (com atalhos por uso) ---------- */}
-      <CategorySection slug="discos-e-abrasivos" withSegments />
+      <Suspense fallback={null}>
+        <CategorySection slug="discos-e-abrasivos" withSegments />
+      </Suspense>
 
       {/* ---------- banners de departamento ---------- */}
       <section className="container-site mt-12" aria-label="Departamentos em destaque">
@@ -148,10 +132,14 @@ export default function HomePage() {
       </section>
 
       {/* ---------- alicates ---------- */}
-      <CategorySection slug="alicates" columns={5} />
+      <Suspense fallback={null}>
+        <CategorySection slug="alicates" columns={5} />
+      </Suspense>
 
       {/* ---------- destaques: um grande no meio ---------- */}
-      {highlights.length > 0 && <Highlights items={highlights} />}
+      <Suspense fallback={null}>
+        <HomeHighlights />
+      </Suspense>
 
       {/* ---------- loja e serviços ---------- */}
       <StoreAndServices />
@@ -160,7 +148,43 @@ export default function HomePage() {
   );
 }
 
-const byCategory = (slug: string) => products.filter((p) => p.category === slug);
+const byCategory = (catalog: Product[], slug: string) => catalog.filter((p) => p.category === slug);
+
+async function HomeDepartments() {
+  return <DepartmentsList departments={departmentsOf(await getCatalog())} />;
+}
+
+async function Offers() {
+  const offers = (await getCatalog()).filter(hasDiscount);
+  if (!offers.length) return null;
+  return (
+    <section className="container-site mt-12" aria-labelledby="ofertas">
+      <div className="mb-5 flex items-end justify-between gap-3">
+        <h2 id="ofertas" className="section-title">
+          Ofertas
+        </h2>
+        <SeeAll href="/produtos?ordem=menor-preco" label="Ver produtos" />
+      </div>
+      <ul className="grid gap-4 md:grid-cols-2">
+        {offers.slice(0, 4).map((p, i) => (
+          <li key={p.slug}>
+            <OfferCard product={p} priority={i < 2} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+async function HomeHighlights() {
+  const catalog = await getCatalog();
+  // destaques: primeiro os marcados como destaque, depois o resto; sem repetir ofertas nem
+  // os produtos que já aparecem nas vitrines de discos e alicates acima
+  const shown = new Set([...byCategory(catalog, "discos-e-abrasivos").slice(0, 4), ...byCategory(catalog, "alicates").slice(0, 5)].map((p) => p.slug));
+  const pool = catalog.filter((p) => !hasDiscount(p) && !shown.has(p.slug));
+  const highlights = [...pool.filter((p) => p.featured), ...pool.filter((p) => !p.featured)].slice(0, 9);
+  return highlights.length > 0 ? <Highlights items={highlights} /> : null;
+}
 
 function SeeAll({ href, label }: { href: string; label: string }) {
   return (
@@ -184,12 +208,13 @@ function TabTitle({ id, title, href, label }: { id: string; title: string; href:
   );
 }
 
-function CategorySection({ slug, columns = 4, withSegments = false }: { slug: string; columns?: 4 | 5; withSegments?: boolean }) {
+async function CategorySection({ slug, columns = 4, withSegments = false }: { slug: string; columns?: 4 | 5; withSegments?: boolean }) {
   const category = categories.find((c) => c.slug === slug);
   if (!category) return null;
-  const items = byCategory(slug).slice(0, withSegments ? 4 : columns);
+  const inCategory = byCategory(await getCatalog(), slug);
+  const items = inCategory.slice(0, withSegments ? 4 : columns);
   const href = `/produtos/${slug}`;
-  const used = segments.filter((s) => products.some((p) => p.category === slug && p.segments.includes(s.slug)));
+  const used = segments.filter((s) => inCategory.some((p) => p.segments.includes(s.slug)));
 
   return (
     <section className="container-site mt-12" aria-labelledby={`dep-${slug}`}>
