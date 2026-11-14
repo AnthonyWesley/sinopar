@@ -48,6 +48,37 @@ describe("db", () => {
     expect(count(db, "variants")).toBe(0);
   });
 
+  it("seed grava uma entrada 'Estoque inicial' por variação com estoque, e o histórico bate", () => {
+    const db = openDb(":memory:");
+    seedIfEmpty(db);
+    const rows = db
+      .prepare(
+        `SELECT v.sku, v.stock, v.reserved, COALESCE(SUM(m.qty), 0) AS total, COUNT(m.id) AS n
+         FROM variants v LEFT JOIN stock_movements m ON m.variant_id = v.id GROUP BY v.id`,
+      )
+      .all() as { sku: string; stock: number; reserved: number; total: number; n: number }[];
+    expect(rows).toHaveLength(103);
+    for (const r of rows) {
+      expect({ sku: r.sku, total: r.total, reserved: r.reserved, n: r.n }).toEqual({
+        sku: r.sku, total: r.stock, reserved: 0, n: r.stock > 0 ? 1 : 0,
+      });
+    }
+    const bad = db
+      .prepare("SELECT COUNT(*) AS n FROM stock_movements WHERE kind <> 'entrada' OR reason <> 'Estoque inicial' OR user_id IS NOT NULL")
+      .get() as { n: number };
+    expect(bad.n).toBe(0);
+    expect(count(db, "stock_movements")).toBeGreaterThan(0);
+  });
+
+  it("variação com movimentação não pode ser apagada (histórico nunca some)", () => {
+    const db = openDb(":memory:");
+    seedIfEmpty(db);
+    const vid = (db.prepare("SELECT variant_id AS id FROM stock_movements LIMIT 1").get() as { id: number }).id;
+    expect(() => db.prepare("DELETE FROM variants WHERE id = ?").run(vid)).toThrow(/FOREIGN KEY/);
+    const pid = (db.prepare("SELECT product_id AS id FROM variants WHERE id = ?").get(vid) as { id: number }).id;
+    expect(() => db.prepare("DELETE FROM products WHERE id = ?").run(pid)).toThrow(/FOREIGN KEY/);
+  });
+
   it("CHECK impede reserved > stock", () => {
     const db = openDb(":memory:");
     seedIfEmpty(db);

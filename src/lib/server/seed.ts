@@ -14,6 +14,11 @@ export function seedIfEmpty(db: Db): void {
     `INSERT INTO variants (product_id,sku,label,price,compare_at,stock,reserved,box_qty,position)
      VALUES (?,?,?,?,?,?,0,?,?)`,
   );
+  // o estoque inicial entra como movimentação, para o histórico sempre somar o estoque
+  const insMovement = db.prepare(
+    `INSERT INTO stock_movements (variant_id,kind,qty,reason,order_id,user_id,at)
+     VALUES (?,'entrada',?,'Estoque inicial',NULL,NULL,?)`,
+  );
   db.transaction(() => {
     for (const p of products) {
       const { lastInsertRowid } = insProduct.run(
@@ -21,9 +26,10 @@ export function seedIfEmpty(db: Db): void {
         JSON.stringify(p.segments), p.description, JSON.stringify(p.specs),
         p.featured ? 1 : 0, now, now,
       );
-      p.variants.forEach((v, i) =>
-        insVariant.run(lastInsertRowid, v.sku, v.label, v.price, v.compareAt ?? null, v.stock, v.boxQty, i),
-      );
+      p.variants.forEach((v, i) => {
+        const variant = insVariant.run(lastInsertRowid, v.sku, v.label, v.price, v.compareAt ?? null, v.stock, v.boxQty, i);
+        if (v.stock > 0) insMovement.run(variant.lastInsertRowid, v.stock, now);
+      });
     }
   })();
 }

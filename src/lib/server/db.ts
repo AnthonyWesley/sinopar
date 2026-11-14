@@ -105,7 +105,7 @@ const MIGRATIONS: ((db: Db) => void)[] = [
     );
     CREATE TABLE IF NOT EXISTS stock_movements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      variant_id INTEGER NOT NULL REFERENCES variants(id) ON DELETE CASCADE,
+      variant_id INTEGER NOT NULL REFERENCES variants(id) ON DELETE RESTRICT,
       kind TEXT NOT NULL,
       qty INTEGER NOT NULL,
       reason TEXT,

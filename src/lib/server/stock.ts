@@ -155,6 +155,14 @@ function reserveAndSell(db: Db, orderId: string, userId: number | null, now: Dat
   }
 }
 
+function wasEverPaid(db: Db, orderId: string): boolean {
+  return (
+    db
+      .prepare("SELECT 1 FROM order_events WHERE order_id = ? AND to_status IN ('pago', 'pago_sem_estoque') LIMIT 1")
+      .get(orderId) !== undefined
+  );
+}
+
 function recordPaymentEvent(db: Db, eventId: string | null, orderId: string, type: string, now: Date): boolean {
   if (eventId == null) return true;
   const r = db
@@ -231,7 +239,9 @@ export function confirmPayment(
       setStatus(db, orderId, status, "pago", "Pagamento confirmado", null, now);
       return { status: "pago" as OrderStatus, slugs: slugsOf(lines), duplicate: false };
     }
-    if (status === "cancelado") {
+    // Opção A só vale para pedido cancelado antes de pago (vencido, sem cobrança, cancelado aguardando).
+    // Se já passou por pago ou pago_sem_estoque, o evento só fica registrado: nada de baixar de novo.
+    if (status === "cancelado" && !wasEverPaid(db, orderId)) {
       const shortages = reserveAndSell(db, orderId, null, now, "pagamento após cancelamento");
       if (shortages.length === 0) {
         setStatus(db, orderId, status, "pago", "Pagamento recebido com o pedido cancelado; havia estoque", null, now);
@@ -336,7 +346,7 @@ export function addStock(
     const v = variantBySku(db, sku);
     if (!v) throw new Error(`Código ${sku} não encontrado.`);
     db.prepare("UPDATE variants SET stock = stock + ? WHERE id = ?").run(qty, v.id);
-    movement(db, v.id, "entrada", qty, reason.trim() || null, null, userId, now);
+    movement(db, v.id, "entrada", qty, reason.trim() || "Entrada", null, userId, now);
     return { slugs: [v.slug] };
   }).immediate();
 }

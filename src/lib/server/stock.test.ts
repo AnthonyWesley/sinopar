@@ -212,6 +212,43 @@ describe("confirmPayment", () => {
   });
 });
 
+describe("pagamento depois de cancelado um pedido já pago", () => {
+  it("pago → cancelado sem restock → novo eventId: nenhuma venda nova, continua cancelado", () => {
+    const id = place([{ sku: SKU, qty: 2 }]);
+    confirmPayment(db, id, "evt_confirmed", NOW);
+    cancelOrder(db, id, { restock: false, userId: USER, reason: "x" }, NOW);
+    const r = confirmPayment(db, id, "evt_received", NOW);
+    expect(r).toEqual({ status: "cancelado", slugs: [], duplicate: true });
+    expect(status(id)).toBe("cancelado");
+    expect(movements("venda")).toHaveLength(1);
+    expect(variant()).toEqual({ stock: 1, reserved: 0 });
+  });
+
+  it("pago → cancelado com restock → novo eventId: nenhuma venda nova, continua cancelado", () => {
+    const id = place([{ sku: SKU, qty: 2 }]);
+    confirmPayment(db, id, "evt_confirmed", NOW);
+    cancelOrder(db, id, { restock: true, userId: USER, reason: "x" }, NOW);
+    const r = confirmPayment(db, id, "evt_received", NOW);
+    expect(r).toEqual({ status: "cancelado", slugs: [], duplicate: true });
+    expect(movements("venda")).toHaveLength(1);
+    expect(variant()).toEqual({ stock: 3, reserved: 0 });
+  });
+
+  it("pago_sem_estoque → cancelado → novo eventId: continua cancelado, estoque intacto", () => {
+    const id = place([{ sku: SKU, qty: 2 }]);
+    expireOrder(db, id, "vencido", NOW);
+    place([{ sku: SKU, qty: 2 }]);
+    confirmPayment(db, id, "evt_late", NOW);
+    cancelOrder(db, id, { restock: false, userId: USER, reason: "estornar" }, NOW);
+    addStock(db, SKU, 5, "chegou", USER, NOW); // agora haveria estoque: mesmo assim não revive
+    const r = confirmPayment(db, id, "evt_received", NOW);
+    expect(r).toEqual({ status: "cancelado", slugs: [], duplicate: true });
+    expect(status(id)).toBe("cancelado");
+    expect(movements("venda")).toHaveLength(0);
+    expect(variant()).toEqual({ stock: 8, reserved: 2 });
+  });
+});
+
 describe("fulfillOutOfStock", () => {
   it("sem estoque → ok:false; depois de addStock → pago", () => {
     const id = place([{ sku: SKU, qty: 2 }]);
@@ -332,6 +369,12 @@ describe("estoque manual", () => {
     expect(() => addStock(db, SKU, -1, "x", USER, NOW)).toThrow();
     expect(addStock(db, SKU, 2, "compra", USER, NOW)).toEqual({ slugs: [SLUG] });
     expect(variant()).toEqual({ stock: 5, reserved: 0 });
+  });
+
+  it("addStock com motivo em branco grava 'Entrada'", () => {
+    addStock(db, SKU, 1, "  ", USER, NOW);
+    const last = db.prepare("SELECT reason FROM stock_movements ORDER BY id DESC LIMIT 1").get() as { reason: string | null };
+    expect(last.reason).toBe("Entrada");
   });
 });
 
