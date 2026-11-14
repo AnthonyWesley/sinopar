@@ -59,11 +59,12 @@ export function getStockRow(db: Db, sku: string): StockRow | null {
   );
 }
 
-/** Histórico de uma variação, do mais novo para o mais antigo. `userName` null = Sistema. */
+/** Histórico de uma variação, do mais novo para o mais antigo. `userName` null = Sistema; "Nome (removido)" = funcionário removido. */
 export function listMovements(db: Db, sku: string): StockMovement[] {
   return db
     .prepare(
-      `SELECT m.id, m.at, m.kind, m.qty, m.reason, m.order_id AS orderId, u.name AS userName
+      `SELECT m.id, m.at, m.kind, m.qty, m.reason, m.order_id AS orderId,
+              u.name || CASE WHEN u.disabled_at IS NOT NULL THEN ' (removido)' ELSE '' END AS userName
        FROM stock_movements m
        JOIN variants v ON v.id = m.variant_id
        LEFT JOIN users u ON u.id = m.user_id

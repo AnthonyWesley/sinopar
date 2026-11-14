@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { openDb } from "./db";
-import { attemptLogin, ensureOwner, findSessionUser, type AuthUser } from "./auth";
+import { attemptLogin, createRecoveryCode, createSession, ensureOwner, findSessionUser, recoverAccess, BAD_LOGIN, BAD_RECOVERY, type AuthUser } from "./auth";
 import { createStaff, deleteStaff, listUsers, resetOwner, resetStaffPassword } from "./users";
+import { moveStage, setStock } from "./stock";
+import { listMovements } from "./stock-repo";
+import { getOrderEvents } from "./orders-repo";
 
 // Portado de revival-church-website (server/users.test.ts), sem Hono: o Responsável (owner)
 // gerencia os funcionários (staff). As funções recebem quem está agindo.
@@ -91,11 +94,49 @@ describe("usuários", () => {
     expect(await resetStaffPassword(db, owner, owner.id, "nova-senha-9")).toMatchObject({ ok: false, status: 400 });
   });
 
-  it("owner exclui o funcionário e as sessões vão junto", async () => {
+  it("owner remove o funcionário: some da lista, as sessões caem e o cadastro fica desativado", async () => {
     const { db, owner, staff, staffToken } = await setup();
     expect(deleteStaff(db, owner, staff.id)).toEqual({ ok: true });
     expect(findSessionUser(db, staffToken, new Date())).toBeNull();
-    expect(db.prepare("SELECT COUNT(*) AS n FROM users").get()).toEqual({ n: 1 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").get(staff.id)).toEqual({ n: 0 });
+    const r = listUsers(db, owner);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.users.map((u) => u.email)).toEqual([OWNER_EMAIL]);
+    expect(db.prepare("SELECT disabled_at IS NOT NULL AS d FROM users WHERE id = ?").get(staff.id)).toEqual({ d: 1 });
+  });
+
+  it("funcionário removido não entra, não recupera o acesso e a sessão antiga não vale (mesmas mensagens genéricas)", async () => {
+    const { db, owner, staff } = await setup();
+    const code = await createRecoveryCode(db, { userId: staff.id, current: "senha-func-1" });
+    if (!code.ok) throw new Error(code.error);
+    const old = await login(db, "edu@fixa.test", "senha-func-1");
+    expect(deleteStaff(db, owner, staff.id)).toEqual({ ok: true });
+    expect(findSessionUser(db, old.token, new Date())).toBeNull();
+    expect(db.prepare("SELECT recovery_hash AS r FROM users WHERE id = ?").get(staff.id)).toEqual({ r: null });
+    expect(await attemptLogin(db, { email: "edu@fixa.test", password: "senha-func-1", ip: "10.0.0.9", now: new Date() })).toEqual({
+      ok: false, status: 401, error: BAD_LOGIN,
+    });
+    expect(
+      await recoverAccess(db, { email: "edu@fixa.test", code: code.code, next: "outra-senha-9", ip: "10.0.0.9", now: new Date() }),
+    ).toEqual({ ok: false, status: 401, error: BAD_RECOVERY });
+    // mesmo que alguém recriasse uma sessão na mão, usuário desativado não passa
+    const leftover = createSession(db, staff.id, new Date());
+    expect(findSessionUser(db, leftover, new Date())).toBeNull();
+  });
+
+  it("remover de novo, ou redefinir a senha de um removido: 404", async () => {
+    const { db, owner, staff } = await setup();
+    deleteStaff(db, owner, staff.id);
+    expect(deleteStaff(db, owner, staff.id)).toMatchObject({ ok: false, status: 404 });
+    expect(await resetStaffPassword(db, owner, staff.id, "nova-senha-9")).toMatchObject({ ok: false, status: 404 });
+  });
+
+  it("o e-mail de um funcionário removido pode ser usado num cadastro novo", async () => {
+    const { db, owner, staff } = await setup();
+    deleteStaff(db, owner, staff.id);
+    const again = await createStaff(db, owner, { name: "Edu 2", email: "edu@fixa.test", password: "senha-func-2" }, NOW);
+    expect(again).toMatchObject({ ok: true, user: { email: "edu@fixa.test", name: "Edu 2" } });
+    await login(db, "edu@fixa.test", "senha-func-2");
   });
 
   it("o owner não pode ser excluído", async () => {
@@ -110,12 +151,24 @@ describe("usuários", () => {
     expect(await resetStaffPassword(db, owner, 999, "nova-senha-9")).toMatchObject({ ok: false, status: 404 });
   });
 
-  it("excluir funcionário com histórico mantém o histórico (user_id vira NULL)", async () => {
+  it("remover funcionário que ajustou estoque e mudou etapa: histórico e linha do tempo mantêm o nome", async () => {
     const { db, owner, staff } = await setup();
+    const t = NOW.toISOString();
+    const p = db.prepare("INSERT INTO products (slug,name,category,image,variant_name,unit,created_at,updated_at) VALUES ('a','A','F','/a.webp','M','un',?,?)").run(t, t);
+    db.prepare("INSERT INTO variants (product_id,sku,label,price) VALUES (?,'SKU-A','6 mm',100)").run(p.lastInsertRowid);
+    db.prepare("INSERT INTO orders (id, token, status, created_at, customer, shipping, payment_method, subtotal, total) VALUES ('P1','t','pago',?,'{}','{}','PIX',1,1)").run(t);
+    expect(setStock(db, "SKU-A", 7, "contagem", staff.id, NOW)).toMatchObject({ ok: true });
+    moveStage(db, "P1", "separado", staff.id, NOW);
+    expect(deleteStaff(db, owner, staff.id)).toEqual({ ok: true });
+    expect(listMovements(db, "SKU-A").map((m) => m.userName)).toEqual(["Edu (removido)"]);
+    expect(getOrderEvents(db, "P1").map((e) => [e.userId, e.userName])).toEqual([[staff.id, "Edu (removido)"]]);
+  });
+
+  it("apagar de verdade um usuário com histórico é barrado pelo banco (RESTRICT)", async () => {
+    const { db, staff } = await setup();
     db.prepare("INSERT INTO orders (id, token, status, created_at, customer, shipping, payment_method, subtotal, total) VALUES ('P1','t','pago','x','{}','{}','PIX',1,1)").run();
     db.prepare("INSERT INTO order_events (order_id, to_status, user_id, at) VALUES ('P1','pago',?, 'x')").run(staff.id);
-    expect(deleteStaff(db, owner, staff.id)).toEqual({ ok: true });
-    expect(db.prepare("SELECT user_id FROM order_events").get()).toEqual({ user_id: null });
+    expect(() => db.prepare("DELETE FROM users WHERE id = ?").run(staff.id)).toThrow(/FOREIGN KEY/);
   });
 });
 

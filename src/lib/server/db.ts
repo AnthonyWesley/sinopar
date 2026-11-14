@@ -48,7 +48,9 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       role TEXT NOT NULL CHECK (role IN ('owner', 'staff')),
       must_change_password INTEGER NOT NULL DEFAULT 0,
       recovery_hash TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      -- funcionário removido: não entra mais, mas continua no histórico (nunca é apagado)
+      disabled_at TEXT
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY,
@@ -93,7 +95,7 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       from_status TEXT,
       to_status TEXT NOT NULL,
       note TEXT,
-      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT,
       at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_id, at);
@@ -110,7 +112,7 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       qty INTEGER NOT NULL,
       reason TEXT,
       order_id TEXT,
-      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT,
       at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_stock_movements_variant ON stock_movements(variant_id, at);

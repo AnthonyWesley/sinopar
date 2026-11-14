@@ -148,7 +148,7 @@ export function findSessionUser(db: Db, token: string, now: Date): AuthUser | nu
     .prepare(
       `SELECT u.id, u.email, u.name, u.role, u.must_change_password AS m, u.recovery_hash IS NOT NULL AS r, s.expires_at AS exp
        FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = ?`,
+       WHERE s.token_hash = ? AND u.disabled_at IS NULL`,
     )
     .get(sha256(token)) as (UserRow & { exp: number }) | undefined;
   if (!row) return null;
@@ -218,7 +218,7 @@ export async function attemptLogin(
   recordFailure(db, keys, input.now);
   const row = db
     .prepare(
-      "SELECT id, email, name, role, password_hash AS hash, must_change_password AS m, recovery_hash IS NOT NULL AS r FROM users WHERE email = ?",
+      "SELECT id, email, name, role, password_hash AS hash, must_change_password AS m, recovery_hash IS NOT NULL AS r FROM users WHERE email = ? AND disabled_at IS NULL",
     )
     .get(email) as (UserRow & { hash: string }) | undefined;
   let ok = false;
@@ -279,7 +279,7 @@ export async function recoverAccess(
   if (isRateLimited(db, keys, input.now)) return fail(429, TOO_MANY);
   recordFailure(db, keys, input.now);
   const row = db
-    .prepare("SELECT id, email, name, role, recovery_hash AS rh FROM users WHERE email = ?")
+    .prepare("SELECT id, email, name, role, recovery_hash AS rh FROM users WHERE email = ? AND disabled_at IS NULL")
     .get(email) as { id: number; email: string; name: string; role: Role; rh: string | null } | undefined;
   let ok = false;
   if (row?.rh) ok = await verifyPassword(code, row.rh);
@@ -288,7 +288,7 @@ export async function recoverAccess(
   const hash = await hashPassword(input.next);
   // confere de novo depois do await: dois pedidos paralelos com o mesmo código não passam os dois
   const consumed = db
-    .prepare("UPDATE users SET password_hash = ?, must_change_password = 0, recovery_hash = NULL WHERE id = ? AND recovery_hash = ?")
+    .prepare("UPDATE users SET password_hash = ?, must_change_password = 0, recovery_hash = NULL WHERE id = ? AND recovery_hash = ? AND disabled_at IS NULL")
     .run(hash, row.id, row.rh);
   if (consumed.changes === 0) return fail(401, BAD_RECOVERY);
   clearFailures(db, keys);

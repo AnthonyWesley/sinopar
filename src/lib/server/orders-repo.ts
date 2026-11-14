@@ -114,7 +114,7 @@ export function getOrderEvents(db: Db, orderId: string): OrderEvent[] {
   return db
     .prepare(
       `SELECT e.from_status AS fromStatus, e.to_status AS toStatus, e.note, e.user_id AS userId,
-              u.name AS userName, e.at
+              u.name || CASE WHEN u.disabled_at IS NOT NULL THEN ' (removido)' ELSE '' END AS userName, e.at
        FROM order_events e LEFT JOIN users u ON u.id = e.user_id
        WHERE e.order_id = ? ORDER BY e.id`,
     )

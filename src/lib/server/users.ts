@@ -35,7 +35,7 @@ const toItem = ({ m, ...u }: Row): UserListItem => ({ ...u, mustChangePassword: 
 
 export function listUsers(db: Db, actor: AuthUser): { ok: true; users: UserListItem[] } | Fail {
   if (!isOwner(actor)) return FORBIDDEN;
-  const rows = db.prepare(`${SELECT_USER} ORDER BY id`).all() as Row[];
+  const rows = db.prepare(`${SELECT_USER} WHERE disabled_at IS NULL ORDER BY id`).all() as Row[];
   return { ok: true, users: rows.map(toItem) };
 }
 
@@ -75,14 +75,14 @@ export async function resetStaffPassword(
   password: string,
 ): Promise<{ ok: true } | Fail> {
   if (!isOwner(actor)) return FORBIDDEN;
-  const target = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as { role: Role } | undefined;
+  const target = db.prepare("SELECT role FROM users WHERE id = ? AND disabled_at IS NULL").get(id) as { role: Role } | undefined;
   if (!target) return NOT_FOUND;
   if (target.role === "owner") return fail(400, "Use a troca de senha da sua própria conta.");
   const lengthError = passwordLengthError(password, "A senha");
   if (lengthError) return fail(400, lengthError);
   const hash = await hashPassword(password);
   db.transaction(() => {
-    db.prepare("UPDATE users SET password_hash = ?, must_change_password = 1, recovery_hash = NULL WHERE id = ? AND role = 'staff'").run(
+    db.prepare("UPDATE users SET password_hash = ?, must_change_password = 1, recovery_hash = NULL WHERE id = ? AND role = 'staff' AND disabled_at IS NULL").run(
       hash,
       id,
     );
@@ -91,13 +91,27 @@ export async function resetStaffPassword(
   return { ok: true };
 }
 
-/** Remove um funcionário. As sessões caem junto (ON DELETE CASCADE); o histórico fica com user_id NULL. */
+/** E-mail guardado num funcionário removido: tem espaço, então nunca bate com um e-mail digitado. */
+export const removedEmail = (id: number, email: string) => `removido-${id} ${email}`;
+
+/**
+ * Remove um funcionário sem apagar o cadastro: o histórico (estoque e pedidos) continua com o nome
+ * dele. Ele some da lista, as sessões caem, o código de recuperação deixa de valer e o login passa a
+ * falhar com a mensagem genérica. O e-mail é reescrito (removedEmail) para ficar livre a um cadastro novo.
+ */
 export function deleteStaff(db: Db, actor: AuthUser, id: number): { ok: true } | Fail {
   if (!isOwner(actor)) return FORBIDDEN;
-  const target = db.prepare("SELECT role FROM users WHERE id = ?").get(id) as { role: Role } | undefined;
+  const target = db.prepare("SELECT role, email FROM users WHERE id = ? AND disabled_at IS NULL").get(id) as
+    | { role: Role; email: string }
+    | undefined;
   if (!target) return NOT_FOUND;
   if (target.role === "owner") return fail(400, "O Responsável não pode ser removido.");
-  db.prepare("DELETE FROM users WHERE id = ? AND role = 'staff'").run(id);
+  db.transaction(() => {
+    db.prepare(
+      "UPDATE users SET disabled_at = ?, email = ?, recovery_hash = NULL WHERE id = ? AND role = 'staff' AND disabled_at IS NULL",
+    ).run(new Date().toISOString(), removedEmail(id, target.email), id);
+    destroyAllSessions(db, id);
+  })();
   return { ok: true };
 }
 
