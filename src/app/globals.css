@@ -189,3 +189,15 @@ p {
     opacity: 0;
   }
 }
+
+/* Painel /admin: tema próprio e minimalista, como o painel do Kadoshi (fundo cinza claro,
+   cartões brancos). O amarelo da marca entra só como fundo, sempre com texto escuro
+   (preto/amarelo 11,7:1); nunca texto amarelo sobre branco. */
+.admin-root {
+  background: var(--surface-2);
+  color: var(--ink);
+  min-height: 100dvh;
+}
+.admin-root :focus-visible {
+  outline-color: var(--ink);
+}
