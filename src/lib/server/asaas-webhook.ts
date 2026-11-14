@@ -25,9 +25,10 @@ export function tokenMatches(given: string | null): boolean {
 /** Tira quebras de linha e limita o tamanho, para o que vem de fora não forjar linhas de log. */
 const clean = (v: unknown, max = 60) => String(v).replace(/[\r\n]+/g, " ").slice(0, max);
 
+// Inclui os códigos estendidos (SQLITE_BUSY_SNAPSHOT, SQLITE_BUSY_RECOVERY, SQLITE_LOCKED_SHAREDCACHE...).
 const isTransient = (e: unknown) => {
   const code = (e as { code?: unknown } | null)?.code;
-  return code === "SQLITE_BUSY" || code === "SQLITE_LOCKED";
+  return typeof code === "string" && (code.startsWith("SQLITE_BUSY") || code.startsWith("SQLITE_LOCKED"));
 };
 
 /**

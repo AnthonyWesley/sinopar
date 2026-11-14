@@ -143,4 +143,12 @@ describe("processAsaasEvent (falhas)", () => {
     const fake = { prepare: () => { throw busy; } } as unknown as Db;
     expect(() => processAsaasEvent(fake, ev("e", "PAYMENT_CONFIRMED", "SP-1"), NOW)).toThrow(busy);
   });
+
+  it("códigos estendidos (SQLITE_BUSY_SNAPSHOT, SQLITE_LOCKED_SHAREDCACHE...) também são repassados", () => {
+    for (const code of ["SQLITE_BUSY_SNAPSHOT", "SQLITE_BUSY_RECOVERY", "SQLITE_BUSY_TIMEOUT", "SQLITE_LOCKED_SHAREDCACHE"]) {
+      const err = Object.assign(new Error("database is locked"), { code });
+      const fake = { prepare: () => { throw err; } } as unknown as Db;
+      expect(() => processAsaasEvent(fake, ev("e", "PAYMENT_CONFIRMED", "SP-1"), NOW), code).toThrow(err);
+    }
+  });
 });

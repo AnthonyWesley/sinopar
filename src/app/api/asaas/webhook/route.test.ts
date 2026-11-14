@@ -40,6 +40,12 @@ describe("POST /api/asaas/webhook", () => {
     const body = JSON.stringify({ id: "e1", event: "PAYMENT_CONFIRMED", payment: { externalReference: "SP-1" } });
     expect((await POST(req("segredo", body))).status).toBe(500);
   });
+  it("500 em código estendido do SQLite (SQLITE_BUSY_SNAPSHOT)", async () => {
+    vi.stubEnv("ASAAS_WEBHOOK_TOKEN", "segredo");
+    getDb.mockReturnValue({ prepare: () => { throw Object.assign(new Error("locked"), { code: "SQLITE_BUSY_SNAPSHOT" }); } });
+    const body = JSON.stringify({ id: "e1", event: "PAYMENT_CONFIRMED", payment: { externalReference: "SP-1" } });
+    expect((await POST(req("segredo", body))).status).toBe(500);
+  });
   it("500 se o banco não abre", async () => {
     vi.stubEnv("ASAAS_WEBHOOK_TOKEN", "segredo");
     getDb.mockImplementation(() => { throw new Error("sem banco"); });
