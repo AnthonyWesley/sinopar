@@ -13,12 +13,14 @@ import { sweep } from "./stock";
 // "static generation store missing"). Por isso a varredura de hora em hora chama a rota interna
 // POST /api/interno/varredura no próprio processo, que varre e invalida as tags. A chave dessa
 // rota é aleatória, criada aqui e guardada só na memória do processo. Se a chamada falhar, a
-// varredura roda direto no banco e a loja se atualiza sozinha pelo cacheLife("hours").
+// varredura roda direto no banco e a loja se atualiza sozinha pelo cacheLife("hours"); a primeira
+// falha gera um aviso no log (em geral PORT ou HOSTNAME fora do padrão 3000 / 0.0.0.0), e as
+// seguintes não repetem o aviso.
 // Na subida não precisa invalidar: o cache em memória começa vazio.
 
 const HOUR = 60 * 60 * 1000;
 
-type JobsGlobal = { __fxJobsStarted?: boolean; __fxInternalKey?: string };
+type JobsGlobal = { __fxJobsStarted?: boolean; __fxInternalKey?: string; __fxSweepRouteWarned?: boolean };
 const g = globalThis as unknown as JobsGlobal;
 
 /** Chave da rota interna de varredura, ou undefined se as tarefas não foram iniciadas neste processo. */
@@ -49,10 +51,12 @@ function sweepDirect() {
   }
 }
 
-async function sweepViaRoute() {
+/** Varredura de hora em hora pela rota interna (exportada para os testes). */
+export async function sweepViaRoute(): Promise<void> {
   const port = process.env.PORT || "3000";
+  const url = `http://127.0.0.1:${port}/api/interno/varredura`;
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/interno/varredura`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "x-fx-interno": g.__fxInternalKey ?? "" },
       signal: AbortSignal.timeout(30_000),
@@ -61,7 +65,15 @@ async function sweepViaRoute() {
     const { expired } = (await res.json()) as { expired: number };
     if (expired) log(`varredura: ${expired} pedido(s) vencido(s), cache invalidado`);
   } catch (err) {
-    log("rota interna de varredura indisponível; varrendo direto (cache expira pelo cacheLife)", err);
+    if (!g.__fxSweepRouteWarned) {
+      g.__fxSweepRouteWarned = true;
+      console.warn(
+        `[tarefas] AVISO: a varredura não conseguiu chamar ${url} (${err instanceof Error ? err.message : String(err)}). ` +
+          "Confira se o servidor escuta em todas as interfaces (HOSTNAME=0.0.0.0) e se PORT é a porta do servidor. " +
+          "Enquanto isso a varredura roda direto no banco, e a loja leva até 1 h para mostrar o estoque liberado. " +
+          "Este aviso aparece só uma vez.",
+      );
+    }
     sweepDirect();
   }
 }

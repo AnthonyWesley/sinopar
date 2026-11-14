@@ -6,3 +6,5 @@ Dockerfile
 *.log
 .env*
 !.env.example
+data
+.superpowers
