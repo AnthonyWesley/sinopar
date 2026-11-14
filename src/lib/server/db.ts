@@ -136,11 +136,16 @@ export function openDb(file: string): Db {
   return db;
 }
 
+/** Pasta dos dados (banco, backups). DATA_DIR no servidor; ./data no desenvolvimento. */
+export function dataDir(): string {
+  return process.env.DATA_DIR || "./data";
+}
+
 const g = globalThis as unknown as { __sinoparDb?: Db };
 
 export function getDb(): Db {
   if (!g.__sinoparDb) {
-    const dir = process.env.DATA_DIR || "./data";
+    const dir = dataDir();
     fs.mkdirSync(dir, { recursive: true });
     const db = openDb(path.join(dir, "site.db"));
     seedIfEmpty(db);
