@@ -37,6 +37,8 @@ import { getOrderByToken } from "../orders";
 import { TAG_CATALOG, productTag } from "../cache-tags";
 import { products } from "../catalog";
 import { placeOrder, type CheckoutState } from "./checkout";
+import { renderToStaticMarkup } from "react-dom/server";
+import { OrderDetails } from "../../app/(checkout)/pedido-confirmado/order-details";
 
 const product = products[0];
 const variant = product.variants[0];
@@ -197,5 +199,36 @@ describe("placeOrder", () => {
     expect(order?.token).toBe(token);
     expect(order?.status).toBe("aguardando");
     expect(getOrderByToken("token-que-nao-existe")).toBeNull();
+  });
+
+  describe("texto da variação na linha do pedido (o mesmo de antes)", () => {
+    const multi = products.find((p) => p.slug === "broca-escalonada")!;
+    const single = products.find((p) => p.slug === "jogo-brocas-escalonadas-3-pecas")!;
+
+    async function placeAndRender(skuToBuy: string) {
+      const url = await expectRedirect(placeOrder(empty, form([{ sku: skuToBuy, qty: 1 }])));
+      const token = new URL(url, "http://x").searchParams.get("pedido")!;
+      const order = repoGetOrderByToken(getDb(), token)!;
+      const html = renderToStaticMarkup(await OrderDetails({ searchParams: Promise.resolve({ pedido: token }) }));
+      return { order, html };
+    }
+
+    it("produto com variantName e várias variações → \"Faixa de furo: 4 a 12 mm\" e a página mostra a linha", async () => {
+      expect(multi.variantName).toBe("Faixa de furo");
+      expect(multi.variants.length).toBeGreaterThan(1);
+      const { order, html } = await placeAndRender(multi.variants[0].sku);
+      expect(order.lines[0].variant).toBe(`Faixa de furo: ${multi.variants[0].label}`);
+      expect(html).toContain(`<span class="block text-sm text-muted">Faixa de furo: ${multi.variants[0].label}</span>`);
+    });
+
+    it("produto de uma variação só → NULL e a página não mostra linha de variação", async () => {
+      expect(single.variantName).toBeNull();
+      expect(single.variants).toHaveLength(1);
+      const { order, html } = await placeAndRender(single.variants[0].sku);
+      expect(order.lines[0].variant).toBeNull();
+      expect(html).toContain(single.name);
+      expect(html).not.toContain(`<span class="block text-sm text-muted">`);
+      expect(html).not.toContain(single.variants[0].label);
+    });
   });
 });

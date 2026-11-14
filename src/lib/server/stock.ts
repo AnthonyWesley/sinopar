@@ -183,12 +183,15 @@ export function createOrderWithReservation(db: Db, order: NewOrder): Result {
     }
     if (qtyBySku.size === 0) throw new Error("Pedido sem itens.");
     const find = db.prepare(
-      `SELECT v.id, v.label, v.price, p.name, p.slug
+      `SELECT v.id, v.label, v.price, p.name, p.slug, p.variant_name AS variantName,
+              (SELECT COUNT(*) FROM variants o WHERE o.product_id = p.id) AS variantCount
        FROM variants v JOIN products p ON p.id = v.product_id
        WHERE v.sku = ? AND p.status = 'ativo'`,
     );
     const found = [...qtyBySku].map(([sku, qty]) => {
-      const v = find.get(sku) as { id: number; label: string; price: number; name: string; slug: string } | undefined;
+      const v = find.get(sku) as
+        | { id: number; label: string; price: number; name: string; slug: string; variantName: string | null; variantCount: number }
+        | undefined;
       return { sku, qty, v };
     });
     const lines: LineRef[] = found.map(({ sku, qty, v }) => ({ sku, qty, variantId: v?.id ?? null, slug: v?.slug ?? null }));
@@ -202,7 +205,9 @@ export function createOrderWithReservation(db: Db, order: NewOrder): Result {
       "INSERT INTO order_lines (order_id, sku, variant_id, name, variant_label, qty, unit_price) VALUES (?,?,?,?,?,?,?)",
     );
     for (const { sku, qty, v } of found) {
-      if (v) insLine.run(order.id, sku, v.id, v.name, v.label, qty, v.price);
+      // foto do texto da escolha, como a loja mostra: só quando o produto tem nome de variação e mais de uma
+      const label = v && v.variantName && v.variantCount > 1 ? `${v.variantName}: ${v.label}` : null;
+      if (v) insLine.run(order.id, sku, v.id, v.name, label, qty, v.price);
     }
     const now = new Date(order.createdAt);
     reserve(db, lines, order.id, "checkout", null, now); // lança ShortageError e desfaz tudo

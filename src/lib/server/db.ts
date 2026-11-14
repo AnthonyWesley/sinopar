@@ -82,7 +82,7 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       sku TEXT NOT NULL,
       variant_id INTEGER REFERENCES variants(id) ON DELETE SET NULL,
       name TEXT NOT NULL,
-      variant_label TEXT NOT NULL,
+      variant_label TEXT, -- texto da escolha na compra ("Faixa de furo: 14 mm"); NULL sem escolha
       qty INTEGER NOT NULL,
       unit_price INTEGER NOT NULL
     );

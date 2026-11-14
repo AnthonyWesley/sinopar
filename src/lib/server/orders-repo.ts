@@ -15,7 +15,8 @@ export type PaymentMethod = "PIX" | "CREDIT_CARD";
 export type Customer = { name: string; email: string; phone: string; document: string };
 export type Shipping = { method: string; label: string; price: number; estimate: string; address: string | null };
 
-export type OrderLine = { sku: string; name: string; variant: string; qty: number; unitPrice: number };
+/** `variant`: o texto da escolha como a pessoa viu na compra ("Faixa de furo: 14 mm"); null quando o produto não tinha escolha */
+export type OrderLine = { sku: string; name: string; variant: string | null; qty: number; unitPrice: number };
 
 export type OrderRecord = {
   id: string;

@@ -114,10 +114,23 @@ describe("reserva no checkout", () => {
     const saved = getOrderByToken(db, o.token)!;
     expect(saved.status).toBe("aguardando");
     expect(saved.lines).toEqual([
-      { sku: SKU, name: "Produto A", variant: "6 mm", qty: 2, unitPrice: 1000 },
+      // Produto A tem variant_name mas uma variação só: não há escolha para mostrar
+      { sku: SKU, name: "Produto A", variant: null, qty: 2, unitPrice: 1000 },
     ]);
     expect(getOrderEvents(db, o.id).map((e) => e.toStatus)).toEqual(["aguardando"]);
     expect(movements("reserva")).toHaveLength(1);
+  });
+
+  it("produto com nome de variação e mais de uma variação guarda o texto composto da linha", () => {
+    const a = db.prepare("SELECT id FROM products WHERE slug = ?").get(SLUG) as { id: number };
+    db.prepare("INSERT INTO variants (product_id,sku,label,price,stock,reserved) VALUES (?,?,?,?,0,0)").run(a.id, "SKU-A2", "10 mm", 1200);
+    addStock(db, "SKU-A2", 5, "compra inicial", USER, NOW);
+    const o = order([{ sku: "SKU-A2", qty: 1 }]);
+    expect(createOrderWithReservation(db, o).ok).toBe(true);
+    expect(getOrderByToken(db, o.token)!.lines[0].variant).toBe("Medida: 10 mm");
+    // o texto é uma foto do momento da compra: renomear depois não muda o pedido
+    db.prepare("UPDATE products SET variant_name = ? WHERE id = ?").run("Bitola", a.id);
+    expect(getOrderByToken(db, o.token)!.lines[0].variant).toBe("Medida: 10 mm");
   });
 
   it("um segundo pedido de 2 retorna shortages e não grava nada", () => {
