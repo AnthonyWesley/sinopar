@@ -425,8 +425,10 @@ export function flagRefund(
   db: Db, orderId: string, eventId: string, now: Date = new Date(), eventType = "PAYMENT_REFUNDED",
 ): void {
   db.transaction(() => {
-    orderStatus(db, orderId);
+    const status = orderStatus(db, orderId);
     if (!recordPaymentEvent(db, eventId, orderId, eventType, now)) return;
     db.prepare("UPDATE orders SET refund_flag = 1 WHERE id = ?").run(orderId);
+    db.prepare("INSERT INTO order_events (order_id, from_status, to_status, note, user_id, at) VALUES (?,?,?,?,NULL,?)")
+      .run(orderId, status, status, `Asaas informou estorno ou contestação (${eventType})`, iso(now));
   }).immediate();
 }

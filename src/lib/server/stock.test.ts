@@ -435,4 +435,20 @@ describe("flagRefund", () => {
     expect(status(id)).toBe("pago");
     expect(variant()).toEqual({ stock: 2, reserved: 0 });
   });
+
+  it("registra o aviso na linha do tempo do pedido uma vez só (evento repetido não duplica)", () => {
+    const id = place([{ sku: SKU, qty: 1 }]);
+    confirmPayment(db, id, "e1", NOW);
+    flagRefund(db, id, "cb_1", NOW, "PAYMENT_CHARGEBACK_REQUESTED");
+    flagRefund(db, id, "cb_1", NOW, "PAYMENT_CHARGEBACK_REQUESTED");
+    const notes = getOrderEvents(db, id).filter((e) => e.note?.includes("estorno"));
+    expect(notes).toEqual([
+      expect.objectContaining({
+        fromStatus: "pago",
+        toStatus: "pago",
+        userId: null,
+        note: "Asaas informou estorno ou contestação (PAYMENT_CHARGEBACK_REQUESTED)",
+      }),
+    ]);
+  });
 });
