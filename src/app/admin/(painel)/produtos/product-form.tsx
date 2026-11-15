@@ -2,7 +2,7 @@
 
 import { ImageUp, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import Image from "next/image";
-import { useActionState, useId, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useId, useState, useTransition, type InputHTMLAttributes, type ReactNode } from "react";
 import { BTN_PRIMARY, BTN_SECONDARY, Field } from "@/components/admin/field";
 import { FormError } from "@/components/admin/form-error";
 import { SubmitButton } from "@/components/admin/submit-button";
@@ -10,6 +10,7 @@ import { Toast } from "@/components/admin/toast";
 import { saveProduct, uploadProductPhoto, type ProductFormState } from "@/lib/actions/products";
 import { categories, NO_PHOTO, segments, type Segment } from "@/lib/catalog";
 import { centsToInput } from "@/lib/money";
+import { formatSaleUnit, parseSaleUnit, SALE_UNIT_KINDS, type SaleUnit } from "@/lib/sale-unit";
 import type { AdminProduct } from "@/lib/server/catalog-repo";
 
 // Formulário de produto (novo e edição). Tudo é controlado: o React limpa um formulário depois
@@ -18,6 +19,10 @@ import type { AdminProduct } from "@/lib/server/catalog-repo";
 // O estoque só aparece para consulta: ele muda pela tela Estoque, que guarda o histórico.
 
 const MAX_PHOTO = 10 * 1024 * 1024;
+// Colunas da tabela de variações no computador: código, [nome], preço, preço "de", qtd. caixa, estoque, remover.
+const VARIANT_COLS_MULTI =
+  "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_2.75rem]";
+const VARIANT_COLS_SINGLE = "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_2.75rem]";
 const INPUT = "block min-h-11 w-full min-w-0 rounded-xl border bg-white px-3 text-base text-ink";
 
 type SpecRow = { key: number; label: string; value: string };
@@ -32,7 +37,7 @@ function initial(p?: AdminProduct) {
     name: p?.name ?? "",
     category: p?.category ?? "",
     description: p?.description ?? "",
-    unit: p?.unit ?? "Unidade",
+    unit: parseSaleUnit(p?.unit ?? "Unidade") as SaleUnit,
     variantName: p?.variantName ?? "",
     image: p && p.image !== NO_PHOTO ? p.image : "",
     featured: p?.featured ?? false,
@@ -57,7 +62,10 @@ function initial(p?: AdminProduct) {
 
 const EMPTY: ProductFormState = {};
 
-export function ProductForm({ product }: { product?: AdminProduct }) {
+export type ProductSuggestions = { variantNames: string[]; specLabels: string[] };
+
+export function ProductForm({ product, suggestions }: { product?: AdminProduct; suggestions?: ProductSuggestions }) {
+  const listId = useId();
   const [state, action] = useActionState(saveProduct, EMPTY);
   const [values, setValues] = useState(() => initial(product));
   // depois de salvar, a página volta com o produto atualizado (ids das variações novas): recomeça dele
@@ -98,14 +106,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
           error={errors.description}
           optional
         />
-        <Field
-          label="Unidade de venda"
-          name="unit"
-          value={values.unit}
-          onChange={(e) => set("unit", e.target.value)}
-          error={errors.unit}
-          help='Como o cliente compra: "Unidade", "Jogo com 5", "Caixa com 100".'
-        />
+        <SaleUnitInput value={values.unit} onChange={(u) => set("unit", u)} error={errors.unit} />
         <fieldset className="space-y-2">
           <legend className="font-medium">Segmentos</legend>
           <p className="text-sm text-muted">Em quais vitrines da loja o produto aparece.</p>
@@ -145,7 +146,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
         {values.specs.map((s, i) => (
           <div key={s.key} className="space-y-2 rounded-xl border border-line p-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Nome" name="specLabel" value={s.label} onChange={(e) => setSpec(i, { label: e.target.value })} placeholder="Ex.: Material" />
+              <Field label="Nome" name="specLabel" value={s.label} onChange={(e) => setSpec(i, { label: e.target.value })} placeholder="Ex.: Material" list={`${listId}-specs`} autoComplete="off" />
               <Field label="Valor" name="specValue" value={s.value} onChange={(e) => setSpec(i, { value: e.target.value })} placeholder="Ex.: Aço cromo-vanádio" />
             </div>
             {errors[`spec-${i}`] ? <p className="text-sm font-medium text-error">{errors[`spec-${i}`]}</p> : null}
@@ -171,69 +172,181 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
           onChange={(e) => set("variantName", e.target.value)}
           error={errors.variantName}
           help="Ex.: Medida, Modelo, Faixa de furo. Deixe vazio se o produto tem uma variação só."
+          list={`${listId}-variants`}
+          autoComplete="off"
         />
         {errors.variants ? <FormError message={errors.variants} /> : null}
-        {values.variants.map((v, i) => {
-          const e = (f: string) => errors[`variant-${i}-${f}`];
-          return (
-            <fieldset key={v.key} className="space-y-3 rounded-xl border border-line p-3">
-              <legend className="px-1 font-medium">Variação {i + 1}</legend>
-              <input type="hidden" name="variantId" value={v.id} />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Código" name="sku" value={v.sku} onChange={(ev) => setVariant(i, { sku: ev.target.value })} error={e("sku")} autoCapitalize="characters" help="Código do fornecedor." />
-                {multi ? (
-                  <Field
-                    label={values.variantName.trim() || "Nome da variação"}
-                    name="label"
-                    value={v.label}
-                    onChange={(ev) => setVariant(i, { label: ev.target.value })}
-                    error={e("label")}
-                    placeholder="Ex.: 4 a 12 mm"
+        {/* No computador vira uma tabela (uma linha por variação); no celular, um bloco por variação. */}
+        <div className="space-y-3 lg:space-y-0 lg:overflow-hidden lg:rounded-xl lg:border lg:border-line">
+          <div aria-hidden="true" className={`hidden bg-surface-2 px-3 py-2 text-sm font-medium text-ink-soft lg:grid ${multi ? VARIANT_COLS_MULTI : VARIANT_COLS_SINGLE}`}>
+            <span>Código</span>
+            {multi ? <span className="truncate">{values.variantName.trim() || "Nome da variação"}</span> : null}
+            <span>Preço (R$)</span>
+            <span>Preço &quot;de&quot; (R$)</span>
+            <span>Qtd. por caixa</span>
+            <span>Estoque</span>
+            <span />
+          </div>
+          {values.variants.map((v, i) => {
+            const e = (f: string) => errors[`variant-${i}-${f}`];
+            return (
+              <fieldset key={v.key} className="min-w-0 rounded-xl border border-line p-3 lg:rounded-none lg:border-0 lg:border-t lg:px-3 lg:py-2.5">
+                <legend className="px-1 font-medium lg:sr-only">Variação {i + 1}</legend>
+                <input type="hidden" name="variantId" value={v.id} />
+                <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:items-start lg:gap-2 ${multi ? VARIANT_COLS_MULTI : VARIANT_COLS_SINGLE}`}>
+                  <Cell label="Código" name="sku" value={v.sku} onChange={(ev) => setVariant(i, { sku: ev.target.value })} error={e("sku")} autoCapitalize="characters" help="Código do fornecedor." />
+                  {multi ? (
+                    <Cell
+                      label={values.variantName.trim() || "Nome da variação"}
+                      name="label"
+                      value={v.label}
+                      onChange={(ev) => setVariant(i, { label: ev.target.value })}
+                      error={e("label")}
+                      placeholder="Ex.: 4 a 12 mm"
+                    />
+                  ) : (
+                    <input type="hidden" name="label" value="" />
+                  )}
+                  <Cell label="Preço (R$)" name="price" inputMode="decimal" value={v.price} onChange={(ev) => setVariant(i, { price: ev.target.value })} error={e("price")} />
+                  <Cell
+                    label='Preço "de" (R$)'
+                    name="compareAt"
+                    optional
+                    inputMode="decimal"
+                    value={v.compareAt}
+                    onChange={(ev) => setVariant(i, { compareAt: ev.target.value })}
+                    error={e("compareAt")}
+                    help="Preço riscado, só quando há desconto."
                   />
-                ) : (
-                  <input type="hidden" name="label" value="" />
-                )}
-                <Field label="Preço (R$)" name="price" inputMode="decimal" placeholder="12,90" value={v.price} onChange={(ev) => setVariant(i, { price: ev.target.value })} error={e("price")} />
-                <Field
-                  label='Preço "de" (R$)'
-                  name="compareAt"
-                  optional
-                  inputMode="decimal"
-                  placeholder="15,90"
-                  value={v.compareAt}
-                  onChange={(ev) => setVariant(i, { compareAt: ev.target.value })}
-                  error={e("compareAt")}
-                  help="Preço riscado, só quando há desconto."
-                />
-                <Field label="Quantidade por caixa" name="boxQty" inputMode="numeric" value={v.boxQty} onChange={(ev) => setVariant(i, { boxQty: ev.target.value })} error={e("boxQty")} help="Do fornecedor. Não aparece na loja." />
-                <div className="space-y-1.5">
-                  <p className="font-medium">Estoque</p>
-                  <p className="flex min-h-11 items-center text-muted">
-                    {v.stock == null ? "0 (variação nova)" : `${v.stock} no estoque · ${v.available} disponível${v.available === 1 ? "" : "is"}`}
-                  </p>
+                  <Cell label="Quantidade por caixa" name="boxQty" inputMode="numeric" value={v.boxQty} onChange={(ev) => setVariant(i, { boxQty: ev.target.value })} error={e("boxQty")} help="Do fornecedor. Não aparece na loja." />
+                  <div className="space-y-1.5">
+                    <p className="font-medium lg:sr-only">Estoque</p>
+                    <p className="flex min-h-11 flex-wrap items-center gap-x-1 text-muted lg:flex-col lg:items-start lg:justify-center lg:gap-0 lg:text-sm lg:leading-tight">
+                      {v.stock == null ? (
+                        "0 (variação nova)"
+                      ) : (
+                        <>
+                          <span>{v.stock} no estoque</span>
+                          <span aria-hidden="true" className="lg:hidden">·</span>
+                          <span>
+                            {v.available} disponível{v.available === 1 ? "" : "is"}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {values.variants.length > 1 ? (
+                    <button
+                      type="button"
+                      title="Remover variação"
+                      className={`${BTN_SECONDARY} w-full sm:col-span-2 sm:w-auto sm:justify-self-start lg:col-span-1 lg:size-11 lg:px-0`}
+                      onClick={() => set("variants", values.variants.filter((_, j) => j !== i))}
+                    >
+                      <Trash2 className="size-5" aria-hidden="true" /> <span className="lg:sr-only">Remover variação</span>
+                    </button>
+                  ) : (
+                    <span className="hidden lg:block" />
+                  )}
                 </div>
-              </div>
-              {e("id") ? <p className="text-sm font-medium text-error">{e("id")}</p> : null}
-              {values.variants.length > 1 ? (
-                <button type="button" className={`${BTN_SECONDARY} w-full sm:w-auto`} onClick={() => set("variants", values.variants.filter((_, j) => j !== i))}>
-                  <Trash2 className="size-5" aria-hidden="true" /> Remover variação
-                </button>
-              ) : null}
-            </fieldset>
-          );
-        })}
+                {e("id") ? <p className="mt-2 text-sm font-medium text-error">{e("id")}</p> : null}
+              </fieldset>
+            );
+          })}
+        </div>
+        <p className="hidden text-sm text-muted lg:block">
+          Código: do fornecedor. Preço &quot;de&quot;: preço riscado, só quando há desconto (opcional). Qtd. por caixa: do fornecedor, não aparece na loja.
+        </p>
         <button type="button" className={`${BTN_SECONDARY} w-full sm:w-auto`} onClick={() => set("variants", [...values.variants, newVariant()])}>
           <Plus className="size-5" aria-hidden="true" /> Adicionar variação
         </button>
       </Section>
 
-      <div className="sticky bottom-0 -mx-1 flex flex-col gap-2 bg-surface-2/95 px-1 py-3 sm:flex-row">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] -mx-1 flex flex-col gap-2 bg-surface-2/95 px-1 py-3 sm:bottom-0 sm:flex-row">
         <SubmitButton className={`${BTN_PRIMARY} w-full sm:w-auto`}>
           <Save className="size-5" aria-hidden="true" /> {product ? "Salvar alterações" : "Cadastrar produto"}
         </SubmitButton>
       </div>
       <Toast message={state.message} token={state} />
+      {/* sugestões: o que já foi usado em outros produtos (o campo continua aceitando texto novo) */}
+      <datalist id={`${listId}-variants`}>
+        {(suggestions?.variantNames ?? []).map((v) => (
+          <option key={v} value={v} />
+        ))}
+      </datalist>
+      <datalist id={`${listId}-specs`}>
+        {(suggestions?.specLabels ?? []).map((v) => (
+          <option key={v} value={v} />
+        ))}
+      </datalist>
     </form>
+  );
+}
+
+/** Unidade de venda: tipo numa lista + quantidade de peças. Vai para o servidor como texto ("Jogo com 5"). */
+function SaleUnitInput({ value, onChange, error }: { value: SaleUnit; onChange: (u: SaleUnit) => void; error?: string }) {
+  return (
+    <div className="space-y-3">
+      <input type="hidden" name="unit" value={formatSaleUnit(value)} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Select
+          label="Unidade de venda"
+          name="unitKind"
+          value={value.kind}
+          onChange={(k) => onChange({ ...value, kind: k as SaleUnit["kind"] })}
+          error={value.kind === "Outro" ? undefined : error}
+          options={SALE_UNIT_KINDS.map((k) => ({ value: k, label: k }))}
+        />
+        {value.kind === "Outro" ? (
+          <Field label="Como o cliente compra" name="unitOther" value={value.other} onChange={(e) => onChange({ ...value, other: e.target.value })} error={error} placeholder="Ex.: Rolo de 50 m" autoComplete="off" />
+        ) : value.kind !== "Unidade" ? (
+          <Field
+            label="Com quantas peças"
+            name="unitCount"
+            optional
+            inputMode="numeric"
+            value={value.count}
+            onChange={(e) => onChange({ ...value, count: e.target.value.replace(/\D/g, "") })}
+            autoComplete="off"
+          />
+        ) : null}
+      </div>
+      <p className="text-sm text-muted">
+        Na loja aparece: <b className="text-ink">{formatSaleUnit(value) || "—"}</b>
+      </p>
+    </div>
+  );
+}
+
+// Campo de uma variação. No celular é igual ao Field; na tabela do computador o rótulo vira
+// só para leitor de tela (o cabeçalho da coluna mostra) e a ajuda vai para a nota abaixo da tabela.
+function Cell({ label, help, error, optional, ...input }: InputHTMLAttributes<HTMLInputElement> & { label: string; help?: string; error?: string; optional?: boolean }) {
+  const id = useId();
+  const describedBy = [help ? `${id}-help` : null, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <label htmlFor={id} className="block font-medium lg:sr-only">
+        {label}
+        {optional ? <span className="ml-1 font-normal text-muted">(opcional)</span> : null}
+      </label>
+      <input
+        id={id}
+        type="text"
+        {...input}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={`${INPUT} ${error ? "border-error" : "border-line-strong"}`}
+      />
+      {help ? (
+        <p id={`${id}-help`} className="text-sm text-muted lg:sr-only">
+          {help}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-error`} className="text-sm font-medium text-error">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

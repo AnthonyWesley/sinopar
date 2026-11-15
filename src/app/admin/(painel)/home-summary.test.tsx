@@ -24,6 +24,30 @@ describe("Início", () => {
     expect(screen.getByText("Nenhum código acabando.")).toBeInTheDocument();
   });
 
+  it("cartão com pedidos fica em destaque; cartão zerado fica apagado", () => {
+    render(<HomeSummary counts={{ pago: 2, separado: 0, pago_sem_estoque: 0 }} lowStock={[]} />);
+    const pago = screen.getByRole("link", { name: /Pagos para separar/ });
+    const separado = screen.getByRole("link", { name: /Separados para enviar/ });
+    expect(pago).toHaveAttribute("data-state", "pendente");
+    expect(separado).toHaveAttribute("data-state", "vazio");
+  });
+
+  it("mostra só os 8 mais urgentes (menor disponível primeiro) e link para o resto", () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({ sku: `C-${i}`, name: `Item ${i}`, label: "Padrão", available: (i * 7) % 6 }));
+    render(<HomeSummary counts={{ pago: 0, separado: 0, pago_sem_estoque: 0 }} lowStock={many} />);
+    const items = within(screen.getByRole("list", { name: "Códigos acabando" })).getAllByRole("link");
+    expect(items).toHaveLength(8);
+    const shown = items.map((a) => Number(a.querySelector("[data-available]")?.getAttribute("data-available")));
+    expect(shown).toEqual([...shown].sort((a, b) => a - b));
+    expect(shown[0]).toBe(0);
+    expect(screen.getByRole("link", { name: "Ver os outros 3 no estoque" })).toHaveAttribute("href", "/admin/estoque?filtro=acabando");
+  });
+
+  it("com até 8 códigos não mostra o link de outros", () => {
+    render(<HomeSummary counts={{ pago: 0, separado: 0, pago_sem_estoque: 0 }} lowStock={low} />);
+    expect(screen.queryByRole("link", { name: /Ver os outros/ })).toBeNull();
+  });
+
   it("lista os códigos acabando com o disponível", () => {
     render(<HomeSummary counts={{ pago: 0, separado: 0, pago_sem_estoque: 0 }} lowStock={low} />);
     const list = screen.getByRole("list", { name: "Códigos acabando" });

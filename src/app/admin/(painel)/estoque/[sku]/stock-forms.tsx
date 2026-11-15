@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import { Field } from "@/components/admin/field";
 import { FormError } from "@/components/admin/form-error";
 import { Panel } from "@/components/admin/panel";
 import { SubmitButton } from "@/components/admin/submit-button";
 import { Toast } from "@/components/admin/toast";
 import { addStockAction, setStockAction, type StockFormState } from "@/lib/actions/stock";
+import { ADJUST_REASONS, adjustReasonText } from "@/lib/adjust-reasons";
 
 const EMPTY: StockFormState = {};
 
@@ -26,7 +27,9 @@ export function StockForms({ sku, stock, reserved }: { sku: string; stock: numbe
   const [qty, setQty] = useState("");
   const [addReason, setAddReason] = useState("");
   const [counted, setCounted] = useState("");
-  const [setReason, setSetReason] = useState("");
+  const [reasonChoice, setReasonChoice] = useState("");
+  const [reasonOther, setReasonOther] = useState("");
+  const reasonId = useId();
   // depois de uma resposta com sucesso o formulário esvazia; com erro, mantém o que foi digitado
   const [seenAdd, setSeenAdd] = useState(addState);
   if (addState !== seenAdd) {
@@ -41,7 +44,8 @@ export function StockForms({ sku, stock, reserved }: { sku: string; stock: numbe
     setSeenSet(setState);
     if (setState.message) {
       setCounted("");
-      setSetReason("");
+      setReasonChoice("");
+      setReasonOther("");
     }
   }
   useRefreshOnSuccess(addState);
@@ -73,7 +77,32 @@ export function StockForms({ sku, stock, reserved }: { sku: string; stock: numbe
           </p>
           <FormError message={setState.error} />
           <Field label="Total contado" name="counted" type="text" inputMode="numeric" autoComplete="off" value={counted} onChange={(e) => setCounted(e.target.value)} />
-          <Field label="Motivo do ajuste" name="reason" help="Obrigatório. Por exemplo, contagem do mês ou item avariado." autoComplete="off" value={setReason} onChange={(e) => setSetReason(e.target.value)} />
+          <input type="hidden" name="reason" value={adjustReasonText(reasonChoice, reasonOther)} />
+          <div className="space-y-1.5">
+            <label htmlFor={reasonId} className="block font-medium">
+              Motivo do ajuste
+            </label>
+            <select
+              id={reasonId}
+              value={reasonChoice}
+              onChange={(e) => setReasonChoice(e.target.value)}
+              aria-describedby={`${reasonId}-help`}
+              className="block min-h-11 w-full min-w-0 rounded-xl border border-line-strong bg-white px-3 text-base text-ink"
+            >
+              <option value="">Escolha…</option>
+              {ADJUST_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <p id={`${reasonId}-help`} className="text-sm text-muted">
+              Obrigatório. Fica no histórico do código.
+            </p>
+          </div>
+          {reasonChoice === "Outro" ? (
+            <Field label="Qual o motivo" name="reasonOther" autoComplete="off" value={reasonOther} onChange={(e) => setReasonOther(e.target.value)} />
+          ) : null}
           <SubmitButton className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong bg-white px-4 text-base font-medium text-ink hover:bg-surface-2 disabled:opacity-60 sm:w-auto">
             Ajustar estoque
           </SubmitButton>

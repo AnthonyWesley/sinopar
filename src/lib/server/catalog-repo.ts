@@ -373,3 +373,26 @@ export function deleteOrPauseProduct(db: Db, id: number, now: Date): DeleteResul
     return { ok: true, deleted: true, slug: row.slug, image: row.image };
   })();
 }
+
+/** Sugestões do formulário de produto: nomes já usados, o mais usado primeiro (empate: ordem alfabética). */
+export function productFormSuggestions(db: Db): { variantNames: string[]; specLabels: string[] } {
+  const variantCount = new Map<string, number>();
+  const specCount = new Map<string, number>();
+  const bump = (m: Map<string, number>, raw: unknown) => {
+    const k = typeof raw === "string" ? raw.trim() : "";
+    if (k) m.set(k, (m.get(k) ?? 0) + 1);
+  };
+  const rows = db.prepare("SELECT variant_name, specs FROM products").all() as { variant_name: string; specs: string }[];
+  for (const r of rows) {
+    bump(variantCount, r.variant_name);
+    let specs: unknown = [];
+    try {
+      specs = JSON.parse(r.specs || "[]");
+    } catch {
+      specs = [];
+    }
+    if (Array.isArray(specs)) for (const s of specs) bump(specCount, (s as { label?: unknown })?.label);
+  }
+  const sorted = (m: Map<string, number>) => [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR")).map(([k]) => k);
+  return { variantNames: sorted(variantCount), specLabels: sorted(specCount) };
+}

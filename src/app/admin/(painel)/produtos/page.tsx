@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { FlashToast } from "@/components/admin/flash-toast";
 import { categories } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
+import { groupByCategory } from "@/lib/group-by-category";
 import { listAdminProducts, type Situation } from "@/lib/server/catalog-repo";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/session";
@@ -28,6 +29,8 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
   const situation = (SITUATIONS as string[]).includes(one(sp.situacao)) ? (one(sp.situacao) as Situation) : undefined;
   const list = listAdminProducts(getDb(), { q, category, situation });
   const filtered = Boolean(q || category || situation);
+  // agrupada por departamento, na ordem da loja, para não virar uma coluna só de 60+ produtos
+  const groups = groupByCategory(list, categories);
 
   return (
     <div className="space-y-5">
@@ -103,32 +106,53 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
       {list.length === 0 ? (
         <p className="rounded-2xl border border-line bg-white p-5 text-muted">Nenhum produto encontrado.</p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-          {list.map((p) => {
-            const prices = p.variants.map((v) => v.price);
-            const min = prices.length ? Math.min(...prices) : 0;
-            const available = p.variants.reduce((n, v) => n + v.available, 0);
-            return (
-              <li key={p.id}>
-                <Link href={`/admin/produtos/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2 sm:px-5">
-                  <Image src={p.image} alt="" width={56} height={56} className="size-14 shrink-0 rounded-lg bg-surface-2 object-cover" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block break-words font-medium">{p.name}</span>
-                    <span className="block text-sm text-muted">
-                      {categoryName.get(p.category) ?? p.category} ·{" "}
-                      {p.variants.length === 1 ? `cód. ${p.variants[0].sku}` : `${p.variants.length} variações`}
-                    </span>
-                    <span className="block text-sm">
-                      {prices.length > 1 ? "a partir de " : ""}
-                      {formatPrice(min)} · {available} disponível{available === 1 ? "" : "is"}
-                    </span>
-                  </span>
-                  <SituationBadge situation={p.situation} />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {groups.length > 1 ? (
+            <nav aria-label="Ir para o departamento" className="flex flex-wrap gap-2">
+              {groups.map((g) => (
+                <a
+                  key={g.slug}
+                  href={`#dep-${g.slug}`}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-sm font-medium hover:bg-surface-2"
+                >
+                  {g.name} <span className="tabular-nums text-muted">{g.items.length}</span>
+                </a>
+              ))}
+            </nav>
+          ) : null}
+          {groups.map((g) => (
+            <section key={g.slug} id={`dep-${g.slug}`} aria-labelledby={`dep-${g.slug}-titulo`} className="scroll-mt-20 space-y-2">
+              <h2 id={`dep-${g.slug}-titulo`} className="flex items-baseline gap-2 font-semibold">
+                {g.name} <span className="text-sm font-normal text-muted">{g.items.length === 1 ? "1 produto" : `${g.items.length} produtos`}</span>
+              </h2>
+              <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+                {g.items.map((p) => {
+                  const prices = p.variants.map((v) => v.price);
+                  const min = prices.length ? Math.min(...prices) : 0;
+                  const available = p.variants.reduce((n, v) => n + v.available, 0);
+                  return (
+                    <li key={p.id}>
+                      <Link href={`/admin/produtos/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2 sm:px-5">
+                        <Image src={p.image} alt="" width={56} height={56} className="size-14 shrink-0 rounded-lg bg-surface-2 object-cover" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block break-words font-medium">{p.name}</span>
+                          <span className="block text-sm text-muted">
+                            {p.variants.length === 1 ? `cód. ${p.variants[0].sku}` : `${p.variants.length} variações`}
+                          </span>
+                          <span className="block text-sm">
+                            {prices.length > 1 ? "a partir de " : ""}
+                            {formatPrice(min)} · {available} disponível{available === 1 ? "" : "is"}
+                          </span>
+                        </span>
+                        <SituationBadge situation={p.situation} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </>
       )}
       <FlashToast param="excluido" message={one(sp.excluido) ? "Produto excluído." : undefined} />
     </div>

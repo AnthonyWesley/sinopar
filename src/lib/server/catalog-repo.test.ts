@@ -9,6 +9,7 @@ import {
   getProductBySlug,
   listAdminProducts,
   listProducts,
+  productFormSuggestions,
   productSlugExists,
   setProductStatus,
   slugify,
@@ -283,5 +284,18 @@ describe("catalog-repo: escrita", () => {
     db.prepare("UPDATE variants SET stock = 10, reserved = 3 WHERE sku = ?").run(sku);
     const row = listAdminProducts(db).find((p) => p.slug === first.slug)!;
     expect(row.variants[0]).toMatchObject({ sku, stock: 10, reserved: 3, available: 7 });
+  });
+
+  it("productFormSuggestions lista o que já foi usado, mais usado primeiro, sem repetir", () => {
+    const db2 = openDb(":memory:");
+    const ins = db2.prepare(
+      "INSERT INTO products (slug, name, category, image, variant_name, unit, segments, description, specs, featured, status, created_at, updated_at) VALUES (?, ?, 'x', '', ?, 'Unidade', '[]', '', ?, 0, 'ativo', '', '')",
+    );
+    const spec = (...labels: string[]) => JSON.stringify(labels.map((label) => ({ label, value: "v" })));
+    ins.run("a", "A", "Medida", spec("Uso", "Peças"));
+    ins.run("b", "B", "Modelo", spec("Uso", " Material "));
+    ins.run("c", "C", "Medida", spec("Uso"));
+    ins.run("d", "D", "", spec());
+    expect(productFormSuggestions(db2)).toEqual({ variantNames: ["Medida", "Modelo"], specLabels: ["Uso", "Material", "Peças"] });
   });
 });

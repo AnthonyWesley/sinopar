@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
 import { FlashToast } from "@/components/admin/flash-toast";
-import { getAdminProduct } from "@/lib/server/catalog-repo";
+import { getAdminProduct, productFormSuggestions } from "@/lib/server/catalog-repo";
 import { getDb } from "@/lib/server/db";
 import { requireUser } from "@/lib/session";
 import { BackLink } from "../back-link";
@@ -45,7 +45,7 @@ export default async function EditProductPage(props: PageProps<"/admin/produtos/
         <h2 className="text-lg font-semibold">Situação</h2>
         <ProductActions id={product.id} name={product.name} status={product.status} />
       </section>
-      <ProductForm product={product} />
+      <ProductForm product={product} suggestions={productFormSuggestions(getDb())} />
       <FlashToast param="criado" message={created ? "Produto cadastrado. Lance o estoque na tela Estoque." : undefined} />
     </div>
   );
