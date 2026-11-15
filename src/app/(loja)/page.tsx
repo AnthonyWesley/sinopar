@@ -4,11 +4,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CategoryIcon } from "@/components/category-icon";
 import { DepartmentsList, SIDEBAR_ID } from "@/components/departments-menu";
+import { BannerCarousel } from "@/components/banner-carousel";
 import { Price } from "@/components/price";
 import { ProductCard } from "@/components/product-card";
 import { departmentsOf } from "@/components/site-header";
 import { StockStatus } from "@/components/stock";
 import { categories, fromPrice, hasDiscount, NO_PHOTO, segments, totalStock, type Product } from "@/lib/catalog";
+import { getLiveBanners } from "@/lib/banners-data";
 import { getCatalog } from "@/lib/catalog-data";
 import { discountPercent, formatPrice } from "@/lib/format";
 import { returnsSummary, whatsappLink } from "@/lib/site";
@@ -30,30 +32,9 @@ export default function HomePage() {
               <HomeDepartments />
             </Suspense>
           </nav>
-          <div className="relative grid min-h-64 overflow-hidden rounded-lg bg-surface-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:mt-3">
-            <div className="relative z-10 flex flex-col justify-center p-5 sm:p-8 lg:p-10">
-              <p className="text-sm font-bold tracking-wide uppercase">Envio para todo o Brasil</p>
-              <h1 id="chamada" className="section-title mt-2 max-w-xl text-[clamp(1.5rem,1.15rem+1.2vw,2.125rem)] leading-[1.12]">
-                Ferramentas e acessórios para obra, campo e oficina
-              </h1>
-              <p className="mt-3 max-w-md text-ink-soft">Compre online e receba onde estiver. Pague com Pix ou cartão de crédito.</p>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Link href="/produtos" className="btn-dark min-h-12 px-6 uppercase">
-                  Ver produtos
-                </Link>
-              </div>
-            </div>
-            <div className="relative hidden min-h-56 sm:block">
-              <Image
-                src="/images/produtos/parafusadeira-bateria.webp"
-                alt="Parafusadeira a bateria"
-                fill
-                priority
-                sizes="(min-width: 1024px) 34vw, 45vw"
-                className="object-contain p-6 mix-blend-multiply"
-              />
-            </div>
-          </div>
+          <Suspense fallback={<HeroSkeleton />}>
+            <HomeHero />
+          </Suspense>
         </div>
       </section>
 
@@ -151,6 +132,50 @@ export default function HomePage() {
 }
 
 const byCategory = (catalog: Product[], slug: string) => catalog.filter((p) => p.category === slug);
+
+// Banners do painel (painel > Banners) no lugar do destaque. Sem banner no ar, fica o destaque
+// fixo abaixo. O título da página continua existindo para leitor de tela e Google.
+async function HomeHero() {
+  const banners = await getLiveBanners();
+  if (banners.length === 0) return <DefaultHero />;
+  return (
+    <div className="flex min-w-0 flex-col">
+      <h1 id="chamada" className="sr-only">
+        Fixa Store: ferramentas e acessórios para obra, campo e oficina
+      </h1>
+      <BannerCarousel banners={banners.map((b) => ({ id: b.id, title: b.title, desktop: b.imageDesktop, mobile: b.imageMobile, link: b.link }))} />
+    </div>
+  );
+}
+
+function DefaultHero() {
+  return (
+    <div className="relative grid min-h-64 overflow-hidden rounded-lg bg-surface-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:mt-3">
+      <div className="relative z-10 flex flex-col justify-center p-5 sm:p-8 lg:p-10">
+        <p className="text-sm font-bold tracking-wide uppercase">Envio para todo o Brasil</p>
+        <h1 id="chamada" className="section-title mt-2 max-w-xl text-[clamp(1.5rem,1.15rem+1.2vw,2.125rem)] leading-[1.12]">
+          Ferramentas e acessórios para obra, campo e oficina
+        </h1>
+        <p className="mt-3 max-w-md text-ink-soft">Compre online e receba onde estiver. Pague com Pix ou cartão de crédito.</p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link href="/produtos" className="btn-dark min-h-12 px-6 uppercase">
+            Ver produtos
+          </Link>
+        </div>
+      </div>
+      <div className="relative hidden min-h-56 sm:block">
+        <Image
+          src="/images/produtos/parafusadeira-bateria.webp"
+          alt="Parafusadeira a bateria"
+          fill
+          priority
+          sizes="(min-width: 1024px) 34vw, 45vw"
+          className="object-contain p-6 mix-blend-multiply"
+        />
+      </div>
+    </div>
+  );
+}
 
 async function HomeDepartments() {
   return <DepartmentsList departments={departmentsOf(await getCatalog())} />;
@@ -444,6 +469,11 @@ function Bone({ children }: { children: React.ReactNode }) {
 }
 
 /** lista do menu lateral sem as contagens (os nomes dos departamentos são fixos) */
+/** mesmo lugar e altura mínima do destaque, sem conteúdo (não pisca texto antes do banner) */
+function HeroSkeleton() {
+  return <div aria-hidden="true" className="min-h-64 rounded-lg bg-surface-2 sm:min-h-80 lg:mt-3" />;
+}
+
 function DepartmentsSkeleton() {
   return (
     <ul className="p-2" aria-hidden="true">

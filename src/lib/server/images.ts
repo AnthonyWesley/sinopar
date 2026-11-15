@@ -48,8 +48,11 @@ function heicPixels(buf: Buffer): number | null {
   return max;
 }
 
-/** Converte para WebP de no máximo 1600 px, girando conforme o EXIF. Lança se não conseguir ler. */
-export async function processImage(buf: Buffer, mime: string): Promise<Buffer> {
+/** lado maior padrão (fotos de produto); banners pedem mais (maxSize) */
+export const DEFAULT_MAX_SIZE = 1600;
+
+/** Converte para WebP de no máximo `maxSize` px, girando conforme o EXIF. Lança se não conseguir ler. */
+export async function processImage(buf: Buffer, mime: string, maxSize = DEFAULT_MAX_SIZE): Promise<Buffer> {
   let input = buf;
   if (mime === "image/heic" || mime === "image/heif") {
     const pixels = heicPixels(buf);
@@ -58,7 +61,7 @@ export async function processImage(buf: Buffer, mime: string): Promise<Buffer> {
   }
   return sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate()
-    .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
+    .resize({ width: maxSize, height: maxSize, fit: "inside", withoutEnlargement: true })
     .webp({ quality: 82 })
     .toBuffer();
 }
@@ -81,13 +84,13 @@ export function uploadPath(name: string): string {
 
 export type UploadResult = { ok: true; url: string } | { ok: false; error: string };
 
-export async function saveUpload(buf: Buffer): Promise<UploadResult> {
+export async function saveUpload(buf: Buffer, opts: { maxSize?: number } = {}): Promise<UploadResult> {
   if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: UPLOAD_ERRORS.tooBig };
   const mime = detectMime(buf);
   if (!mime) return { ok: false, error: UPLOAD_ERRORS.type };
   let out: Buffer;
   try {
-    out = await processImage(buf, mime);
+    out = await processImage(buf, mime, opts.maxSize);
   } catch {
     return { ok: false, error: UPLOAD_ERRORS.unreadable };
   }

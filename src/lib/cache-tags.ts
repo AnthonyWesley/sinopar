@@ -3,3 +3,6 @@
 export const TAG_CATALOG = "catalogo";
 
 export const productTag = (slug: string) => `produto:${slug}`;
+
+/** banners da página inicial (painel > Banners) */
+export const TAG_BANNERS = "banners";

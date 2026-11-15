@@ -117,7 +117,24 @@ const MIGRATIONS: ((db: Db) => void)[] = [
     );
     CREATE INDEX IF NOT EXISTS idx_stock_movements_variant ON stock_movements(variant_id, at);
   `),
-  // versão 2...: acrescente novos passos aqui, nunca edite os anteriores
+  // versão 2: banners da página inicial (painel > Banners)
+  (db) =>
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS banners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      image_desktop TEXT NOT NULL,
+      image_mobile TEXT NOT NULL DEFAULT '',
+      link TEXT NOT NULL DEFAULT '',
+      starts_on TEXT NOT NULL DEFAULT '',
+      ends_on TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1,
+      position INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `),
+  // versão 3...: acrescente novos passos aqui, nunca edite os anteriores
 ];
 
 export function migrate(db: Db): void {

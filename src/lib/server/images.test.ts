@@ -45,6 +45,13 @@ describe("saveUpload", () => {
     expect([meta.width, meta.height]).toEqual([1600, 1067]);
   });
 
+  it("banner pode ir até 2400 px (maxSize)", async () => {
+    const r = await saveUpload(await sharp({ create: { width: 3000, height: 1500, channels: 3, background: "#123" } }).jpeg().toBuffer(), { maxSize: 2400 });
+    if (!r.ok) throw new Error(r.error);
+    const meta = await sharp(path.join(dir, r.url)).metadata();
+    expect([meta.width, meta.height]).toEqual([2400, 1200]);
+  });
+
   it("arquivo de 11 MB é recusado", async () => {
     const big = Buffer.concat([await png(), Buffer.alloc(11 * 1024 * 1024)]);
     expect(big.length).toBeGreaterThan(MAX_UPLOAD_BYTES);

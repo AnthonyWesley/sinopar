@@ -19,7 +19,7 @@ export function Toast({ message, token, duration = 4000 }: { message?: string; t
 
   const visible = Boolean(message) && hidden !== token;
   return (
-    <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-center">
+    <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 flex justify-center sm:bottom-4">
       {visible ? (
         <p className="pointer-events-auto flex items-center gap-2 rounded-xl bg-ink px-4 py-3 font-medium text-white shadow-lg">
           <CheckCircle2 className="size-5 shrink-0 text-brand" aria-hidden="true" />

@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { openDb } from "./db";
 import { seedIfEmpty } from "./seed";
 import { products } from "../catalog";
@@ -7,10 +10,24 @@ const count = (db: ReturnType<typeof openDb>, t: string) =>
   (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n;
 
 describe("db", () => {
-  it("user_version = 1 e foreign_keys ligado", () => {
+  it("user_version = 2 e foreign_keys ligado", () => {
     const db = openDb(":memory:");
-    expect(db.pragma("user_version", { simple: true })).toBe(1);
+    expect(db.pragma("user_version", { simple: true })).toBe(2);
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+  });
+
+  it("banco já em uso (versão 1) ganha a tabela de banners sem perder nada", () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sinopar-mig-")), "site.db");
+    const old = openDb(file);
+    old.exec("DROP TABLE banners");
+    old.pragma("user_version = 1");
+    old.prepare("INSERT INTO users (email,name,role,password_hash,created_at) VALUES ('a@b.c','A','owner','x','2026-01-01')").run();
+    old.close();
+    const db = openDb(file);
+    expect(db.pragma("user_version", { simple: true })).toBe(2);
+    expect(db.prepare("SELECT count(*) AS n FROM banners").get()).toEqual({ n: 0 });
+    expect(db.prepare("SELECT count(*) AS n FROM users").get()).toEqual({ n: 1 });
+    db.close();
   });
 
   it("seed grava 61 produtos e 103 variações iguais ao catalog.ts", () => {
