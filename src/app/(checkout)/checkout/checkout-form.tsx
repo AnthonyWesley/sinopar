@@ -9,6 +9,8 @@ import { QuoteList } from "@/components/shipping-calculator";
 import { placeOrder, type CheckoutState } from "@/lib/actions/checkout";
 import { cart, cartTotals, useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
+import { lookupCep, type CepAddress } from "@/lib/cep";
+import { fillAddress } from "@/lib/fill-address";
 import { formatCep, isValidCep, pickQuote, quoteShipping, UFS } from "@/lib/shipping";
 
 const initial: CheckoutState = { errors: {}, values: {} };
@@ -38,6 +40,9 @@ export function CheckoutForm() {
   const [cepDraft, setCepDraft] = useState<string | null>(null);
   const [state, action, pending] = useActionState(placeOrder, initial);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const autofilled = useRef<CepAddress | null>(null);
+  const [lookup, setLookup] = useState<{ cep: string; found: boolean } | null>(null);
   const errorList = Object.entries(state.errors);
   const { subtotal } = cartTotals(lines);
   // as opções seguem o CEP que está no campo (é ele que vai para o servidor): enquanto o CEP
@@ -45,6 +50,26 @@ export function CheckoutForm() {
   const quotes = quoteShipping(cepDraft === null ? cep : null, lines);
   const selected = pickQuote(quotes, shipping);
   const total = subtotal + (selected?.price ?? 0);
+
+  // CEP completo: busca o endereço e preenche rua, bairro, cidade e UF (sem apagar o que foi digitado)
+  const lookupFor = cepDraft === null ? cep : null;
+  const hasLines = lines.length > 0;
+  useEffect(() => {
+    if (!lookupFor || !hasLines) return;
+    let alive = true;
+    lookupCep(lookupFor).then((address) => {
+      if (!alive) return;
+      if (address && formRef.current) {
+        fillAddress(formRef.current, address, autofilled.current);
+        autofilled.current = address;
+      }
+      setLookup({ cep: lookupFor, found: Boolean(address) });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [lookupFor, hasLines]);
+  const cepLookup = !lookupFor ? "idle" : lookup?.cep !== lookupFor ? "buscando" : lookup.found ? "ok" : "nao-achou";
 
   // depois de um envio com erro, o foco vai para o resumo de erros (leitor de tela anuncia)
   useEffect(() => {
@@ -94,7 +119,7 @@ export function CheckoutForm() {
   const cepError = state.errors.cep;
 
   return (
-    <form action={action} noValidate className="mt-5 grid gap-8 lg:grid-cols-[1fr_24rem] lg:items-start">
+    <form ref={formRef} action={action} noValidate className="mt-5 grid gap-8 lg:grid-cols-[1fr_24rem] lg:items-start">
       <input type="hidden" name="itens" value={JSON.stringify(lines.map((l) => ({ sku: l.sku, qty: l.qty, name: l.name, price: l.unitPrice })))} />
 
       <div className="space-y-8">
@@ -182,7 +207,18 @@ export function CheckoutForm() {
             <legend className="sr-only">Como quer receber</legend>
             <QuoteList quotes={quotes} selectable selected={shipping} name="entrega" />
           </fieldset>
-          <div className="mt-4 grid gap-4 sm:grid-cols-6">
+          <p aria-live="polite" className="mt-4 flex min-h-5 items-center gap-1.5 text-sm text-muted">
+            {cepLookup === "buscando" ? (
+              <>
+                <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> Buscando o endereço do CEP...
+              </>
+            ) : cepLookup === "ok" ? (
+              "Endereço preenchido pelo CEP. Confira e informe o número."
+            ) : cepLookup === "nao-achou" ? (
+              "Não encontramos o endereço deste CEP. Preencha abaixo."
+            ) : null}
+          </p>
+          <div className="mt-2 grid gap-4 sm:grid-cols-6">
               <div className="sm:col-span-4">{field("rua", { autoComplete: "address-line1" })}</div>
               <div className="sm:col-span-2">{field("numero", { autoComplete: "off" })}</div>
               <div className="sm:col-span-3">{field("complemento", { label: "Complemento", required: false, autoComplete: "address-line2" })}</div>

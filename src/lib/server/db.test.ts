@@ -10,9 +10,9 @@ const count = (db: ReturnType<typeof openDb>, t: string) =>
   (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n;
 
 describe("db", () => {
-  it("user_version = 2 e foreign_keys ligado", () => {
+  it("user_version = 3 e foreign_keys ligado", () => {
     const db = openDb(":memory:");
-    expect(db.pragma("user_version", { simple: true })).toBe(2);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
   });
 
@@ -24,9 +24,22 @@ describe("db", () => {
     old.prepare("INSERT INTO users (email,name,role,password_hash,created_at) VALUES ('a@b.c','A','owner','x','2026-01-01')").run();
     old.close();
     const db = openDb(file);
-    expect(db.pragma("user_version", { simple: true })).toBe(2);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
     expect(db.prepare("SELECT count(*) AS n FROM banners").get()).toEqual({ n: 0 });
     expect(db.prepare("SELECT count(*) AS n FROM users").get()).toEqual({ n: 1 });
+    db.close();
+  });
+
+  it("banco na versão 2 ganha peso e medidas nas variações, vazios", () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sinopar-mig3-")), "site.db");
+    const old = openDb(file);
+    seedIfEmpty(old);
+    for (const c of ["weight_g", "length_cm", "width_cm", "height_cm"]) old.exec(`ALTER TABLE variants DROP COLUMN ${c}`);
+    old.pragma("user_version = 2");
+    old.close();
+    const db = openDb(file);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    expect(db.prepare("SELECT count(*) AS n FROM variants WHERE weight_g IS NULL AND length_cm IS NULL").get()).toEqual({ n: 103 });
     db.close();
   });
 

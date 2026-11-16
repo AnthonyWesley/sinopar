@@ -31,7 +31,19 @@ type VariantRow = {
   stock: number;
   reserved: number;
   box_qty: number;
+  weight_g: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
 };
+
+/** Peso e medidas da embalagem de uma variação, para o frete. */
+export type Package = { weightG: number; lengthCm: number; widthCm: number; heightCm: number };
+
+function toPackage(r: VariantRow): Package | null {
+  if (r.weight_g == null || r.length_cm == null || r.width_cm == null || r.height_cm == null) return null;
+  return { weightG: r.weight_g, lengthCm: r.length_cm, widthCm: r.width_cm, heightCm: r.height_cm };
+}
 
 const PRODUCT_COLS = "id, slug, name, category, image, variant_name, unit, segments, description, specs, featured";
 
@@ -116,6 +128,8 @@ export type VariantInput = {
   price: number;
   compareAt: number | null;
   boxQty: number;
+  /** ausente ou null = ainda sem peso e medidas */
+  pack?: Package | null;
 };
 
 export type ProductInput = {
@@ -138,6 +152,7 @@ export type AdminVariant = {
   price: number;
   compareAt: number | null;
   boxQty: number;
+  pack: Package | null;
   stock: number;
   reserved: number;
   available: number;
@@ -194,6 +209,7 @@ function toAdminVariant(r: VariantRow): AdminVariant {
     price: r.price,
     compareAt: r.compare_at,
     boxQty: r.box_qty,
+    pack: toPackage(r),
     stock: r.stock,
     reserved: r.reserved,
     available: Math.max(0, r.stock - r.reserved),
@@ -282,7 +298,9 @@ const productParams = (input: ProductInput) => [
 ];
 
 const INSERT_VARIANT =
-  "INSERT INTO variants (product_id,sku,label,price,compare_at,stock,reserved,box_qty,position) VALUES (?,?,?,?,?,0,0,?,?)";
+  "INSERT INTO variants (product_id,sku,label,price,compare_at,stock,reserved,box_qty,position,weight_g,length_cm,width_cm,height_cm) VALUES (?,?,?,?,?,0,0,?,?,?,?,?,?)";
+const packParams = (pack: Package | null | undefined) =>
+  pack ? [pack.weightG, pack.lengthCm, pack.widthCm, pack.heightCm] : [null, null, null, null];
 
 export function createProduct(db: Db, input: ProductInput, now: Date): WriteResult {
   return db.transaction((): WriteResult => {
@@ -298,7 +316,7 @@ export function createProduct(db: Db, input: ProductInput, now: Date): WriteResu
       .run(...productParams(input), slug, at, at);
     const id = Number(lastInsertRowid);
     const ins = db.prepare(INSERT_VARIANT);
-    input.variants.forEach((v, i) => ins.run(id, v.sku, v.label, v.price, v.compareAt, v.boxQty, i));
+    input.variants.forEach((v, i) => ins.run(id, v.sku, v.label, v.price, v.compareAt, v.boxQty, i, ...packParams(v.pack)));
     return { ok: true, id, slug };
   })();
 }
@@ -339,10 +357,14 @@ export function updateProduct(db: Db, id: number, input: ProductInput, now: Date
     const park = db.prepare("UPDATE variants SET sku = '~' || id WHERE id = ?");
     for (const v of input.variants) if (v.id != null) park.run(v.id);
     const upd = db.prepare("UPDATE variants SET sku=?, label=?, price=?, compare_at=?, box_qty=?, position=? WHERE id=?");
+    // pack ausente (undefined) = não mexe no peso e medidas já gravados
+    const updPack = db.prepare("UPDATE variants SET weight_g=?, length_cm=?, width_cm=?, height_cm=? WHERE id=?");
     const ins = db.prepare(INSERT_VARIANT);
     input.variants.forEach((v, i) => {
-      if (v.id != null) upd.run(v.sku, v.label, v.price, v.compareAt, v.boxQty, i, v.id);
-      else ins.run(id, v.sku, v.label, v.price, v.compareAt, v.boxQty, i);
+      if (v.id != null) {
+        upd.run(v.sku, v.label, v.price, v.compareAt, v.boxQty, i, v.id);
+        if (v.pack !== undefined) updPack.run(...packParams(v.pack), v.id);
+      } else ins.run(id, v.sku, v.label, v.price, v.compareAt, v.boxQty, i, ...packParams(v.pack));
     });
     return { ok: true, id, slug, oldSlug: current.slug };
   })();

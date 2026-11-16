@@ -27,7 +27,7 @@ import { deleteProduct, saveProduct, setProductStatus, uploadProductPhoto, type 
 const staff = { id: 2, email: "f@x.com", name: "Func", role: "staff" as const, mustChangePassword: false, hasRecoveryCode: true };
 const EMPTY: ProductFormState = {};
 
-type V = { id?: string; sku: string; label?: string; price: string; compareAt?: string; boxQty?: string };
+type V = { id?: string; sku: string; label?: string; price: string; compareAt?: string; boxQty?: string; weight?: string; length?: string; width?: string; height?: string };
 
 function form(over: Record<string, string | string[]> = {}, variants: V[] = [{ sku: "TR-500", price: "R$ 12,90", boxQty: "12" }]) {
   const f = new FormData();
@@ -51,6 +51,10 @@ function form(over: Record<string, string | string[]> = {}, variants: V[] = [{ s
     f.append("price", v.price);
     f.append("compareAt", v.compareAt ?? "");
     f.append("boxQty", v.boxQty ?? "");
+    f.append("weight", v.weight ?? "");
+    f.append("length", v.length ?? "");
+    f.append("width", v.width ?? "");
+    f.append("height", v.height ?? "");
   }
   return f;
 }
@@ -72,6 +76,43 @@ beforeEach(() => {
   vi.mocked(updateTag).mockClear();
   vi.mocked(redirect).mockClear();
   vi.mocked(authorizeAction).mockResolvedValue({ ok: true, user: staff });
+});
+
+describe("peso e medidas (frete)", () => {
+  const packOf = (sku: string) =>
+    getAdminProduct(getDb(), (getDb().prepare("SELECT product_id AS id FROM variants WHERE sku = ?").get(sku) as { id: number }).id)!.variants.find((v) => v.sku === sku)!.pack;
+
+  it("peso em kg vira gramas; medidas em cm (decimal arredonda para cima)", async () => {
+    await redirected(saveProduct(EMPTY, form({ name: "Com peso" }, [{ sku: "PS-1", price: "10", weight: "0,35", length: "20", width: "10,2", height: "5" }])));
+    expect(packOf("PS-1")).toEqual({ weightG: 350, lengthCm: 20, widthCm: 11, heightCm: 5 });
+  });
+
+  it("os quatro vazios: sem peso e medidas (pode preencher depois)", async () => {
+    await redirected(saveProduct(EMPTY, form({ name: "Sem peso" }, [{ sku: "PS-2", price: "10" }])));
+    expect(packOf("PS-2")).toBeNull();
+  });
+
+  it("preencheu só parte: pede o resto", async () => {
+    const r = await saveProduct(EMPTY, form({ name: "Meio" }, [{ sku: "PS-3", price: "10", weight: "1" }]));
+    expect(r.errors?.["variant-0-length"]).toBe("Para o frete, preencha o peso e as três medidas (ou deixe os quatro vazios).");
+    expect(getDb().prepare("SELECT 1 FROM variants WHERE sku = 'PS-3'").get()).toBeUndefined();
+  });
+
+  it("valores inválidos", async () => {
+    const r = await saveProduct(EMPTY, form({ name: "Ruim" }, [{ sku: "PS-4", price: "10", weight: "meio quilo", length: "0", width: "-3", height: "999" }]));
+    expect(r.errors?.["variant-0-weight"]).toBe("Use o peso em kg, por exemplo 0,350.");
+    expect(r.errors?.["variant-0-length"]).toBe("Use centímetros, de 1 a 300.");
+    expect(r.errors?.["variant-0-width"]).toBe("Use centímetros, de 1 a 300.");
+    expect(r.errors?.["variant-0-height"]).toBe("Use centímetros, de 1 a 300.");
+  });
+
+  it("editar mantém e troca o peso", async () => {
+    await redirected(saveProduct(EMPTY, form({ name: "Edita peso" }, [{ sku: "PS-5", price: "10", weight: "2", length: "30", width: "20", height: "10" }])));
+    const id = idOf("edita-peso");
+    const v = getAdminProduct(getDb(), id)!.variants[0];
+    await saveProduct(EMPTY, form({ id: String(id), name: "Edita peso" }, [{ id: String(v.id), sku: "PS-5", price: "10", weight: "2,5", length: "30", width: "20", height: "10" }]));
+    expect(packOf("PS-5")).toEqual({ weightG: 2500, lengthCm: 30, widthCm: 20, heightCm: 10 });
+  });
 });
 
 describe("saveProduct", () => {

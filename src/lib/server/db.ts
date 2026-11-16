@@ -134,7 +134,13 @@ const MIGRATIONS: ((db: Db) => void)[] = [
       updated_at TEXT NOT NULL
     );
   `),
-  // versão 3...: acrescente novos passos aqui, nunca edite os anteriores
+  // versão 3: peso (g) e medidas da embalagem (cm) de cada variação, para o frete; vazios = ainda não informados
+  (db) => {
+    const has = new Set((db.prepare("PRAGMA table_info(variants)").all() as { name: string }[]).map((c) => c.name));
+    for (const col of ["weight_g", "length_cm", "width_cm", "height_cm"])
+      if (!has.has(col)) db.exec(`ALTER TABLE variants ADD COLUMN ${col} INTEGER`);
+  },
+  // versão 4...: acrescente novos passos aqui, nunca edite os anteriores
 ];
 
 export function migrate(db: Db): void {

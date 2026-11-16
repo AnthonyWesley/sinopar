@@ -6,7 +6,7 @@ import type { ProductInput } from "./server/catalog-repo";
 // Leitura e validação (zod) do formulário de produto do painel. Os campos repetidos (variações e
 // características) chegam como listas paralelas no FormData, uma posição por linha.
 // Erros por campo, com chaves que o formulário usa: name, category, variantName, image, unit,
-// description, segments, variants, spec-<i>, variant-<i>-sku|label|price|compareAt|boxQty.
+// description, segments, variants, spec-<i>, variant-<i>-sku|label|price|compareAt|boxQty|weight|length|width|height.
 
 export type FieldErrors = Record<string, string>;
 export type ParsedProduct = { ok: true; input: ProductInput } | { ok: false; errors: FieldErrors };
@@ -54,6 +54,35 @@ const boxQty = z.string().transform((s, ctx) => {
   return n;
 });
 
+// peso e medidas da embalagem (frete): opcionais, mas os quatro juntos
+const PACK_INCOMPLETE = "Para o frete, preencha o peso e as três medidas (ou deixe os quatro vazios).";
+const MAX_KG = 1000;
+const MAX_CM = 300;
+
+/** "0,350" kg → 350 g; vazio → null */
+const weight = z.string().transform((s, ctx) => {
+  const t = s.trim().replace(/\s*kg$/i, "");
+  if (!t) return null;
+  const kg = /^\d+([.,]\d{1,3})?$/.test(t) ? Number(t.replace(",", ".")) : NaN;
+  if (!(kg > 0 && kg <= MAX_KG)) {
+    ctx.addIssue({ code: "custom", message: "Use o peso em kg, por exemplo 0,350." });
+    return z.NEVER;
+  }
+  return Math.round(kg * 1000);
+});
+
+/** centímetros; decimal arredonda para cima (as transportadoras usam cm inteiros); vazio → null */
+const cm = z.string().transform((s, ctx) => {
+  const t = s.trim().replace(/\s*cm$/i, "");
+  if (!t) return null;
+  const n = /^\d+([.,]\d+)?$/.test(t) ? Math.ceil(Number(t.replace(",", "."))) : NaN;
+  if (!(n >= 1 && n <= MAX_CM)) {
+    ctx.addIssue({ code: "custom", message: `Use centímetros, de 1 a ${MAX_CM}.` });
+    return z.NEVER;
+  }
+  return n;
+});
+
 const variantId = z.string().transform((s, ctx) => {
   if (!s) return undefined;
   const n = Number(s);
@@ -78,8 +107,17 @@ const variant = z
     price,
     compareAt,
     boxQty,
+    weight,
+    length: cm,
+    width: cm,
+    height: cm,
   })
   .superRefine((v, ctx) => {
+    const pack = { weight: v.weight, length: v.length, width: v.width, height: v.height };
+    const filled = Object.values(pack).filter((x) => x != null).length;
+    if (filled > 0 && filled < 4) {
+      for (const [k, x] of Object.entries(pack)) if (x == null) ctx.addIssue({ code: "custom", path: [k], message: PACK_INCOMPLETE });
+    }
     if (v.compareAt != null && v.compareAt <= v.price) {
       ctx.addIssue({ code: "custom", path: ["compareAt"], message: 'O preço "de" precisa ser maior que o preço.' });
     }
@@ -145,6 +183,10 @@ export function parseProductForm(form: FormData): ParsedProduct {
   const prices = all(form, "price");
   const compares = all(form, "compareAt");
   const boxes = all(form, "boxQty");
+  const weights = all(form, "weight");
+  const lengths = all(form, "length");
+  const widths = all(form, "width");
+  const heights = all(form, "height");
   const raw = {
     name: str(form, "name"),
     category: str(form, "category"),
@@ -162,6 +204,10 @@ export function parseProductForm(form: FormData): ParsedProduct {
       price: prices[i] ?? "",
       compareAt: compares[i] ?? "",
       boxQty: boxes[i] ?? "",
+      weight: weights[i] ?? "",
+      length: lengths[i] ?? "",
+      width: widths[i] ?? "",
+      height: heights[i] ?? "",
     })),
   };
   const r = schema.safeParse(raw);
@@ -182,7 +228,11 @@ export function parseProductForm(form: FormData): ParsedProduct {
       // linha de característica totalmente vazia é ignorada (a posição conta só para os erros)
       specs: p.specs.filter((s) => s.label),
       // sem variação nomeada, a única variação se chama "Padrão" (como no catálogo original)
-      variants: p.variants.map((v) => ({ ...v, label: v.label || "Padrão" })),
+      variants: p.variants.map(({ weight: weightG, length, width, height, ...v }) => ({
+        ...v,
+        label: v.label || "Padrão",
+        pack: weightG != null && length != null && width != null && height != null ? { weightG, lengthCm: length, widthCm: width, heightCm: height } : null,
+      })),
     },
   };
 }

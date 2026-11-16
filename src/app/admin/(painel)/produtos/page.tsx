@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { PackageX, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,6 +31,9 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
   const filtered = Boolean(q || category || situation);
   // agrupada por departamento, na ordem da loja, para não virar uma coluna só de 60+ produtos
   const groups = groupByCategory(list, categories);
+  // sem peso e medidas o frete da variação não pode ser calculado
+  const noPack = (p: (typeof list)[number]) => p.variants.some((v) => !v.pack);
+  const missingPack = list.filter(noPack).length;
 
   return (
     <div className="space-y-5">
@@ -92,6 +95,7 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
 
       <p className="text-sm text-muted" aria-live="polite">
         {list.length === 1 ? "1 produto" : `${list.length} produtos`}
+        {missingPack ? ` · ${missingPack === 1 ? "1 sem" : `${missingPack} sem`} peso e medidas para o frete` : null}
         {filtered ? (
           <>
             {" "}
@@ -143,6 +147,11 @@ export default async function ProductsPage(props: PageProps<"/admin/produtos">) 
                             {prices.length > 1 ? "a partir de " : ""}
                             {formatPrice(min)} · {available} disponível{available === 1 ? "" : "is"}
                           </span>
+                          {noPack(p) ? (
+                            <span className="mt-0.5 flex items-center gap-1 text-sm text-ink-soft">
+                              <PackageX className="size-4 shrink-0" aria-hidden="true" /> Falta peso e medidas
+                            </span>
+                          ) : null}
                         </span>
                         <SituationBadge situation={p.situation} />
                       </Link>

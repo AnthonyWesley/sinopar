@@ -26,10 +26,28 @@ const VARIANT_COLS_SINGLE = "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(
 const INPUT = "block min-h-11 w-full min-w-0 rounded-xl border bg-white px-3 text-base text-ink";
 
 type SpecRow = { key: number; label: string; value: string };
-type VariantRow = { key: number; id: string; sku: string; label: string; price: string; compareAt: string; boxQty: string; stock?: number; available?: number };
+type VariantRow = {
+  key: number;
+  id: string;
+  sku: string;
+  label: string;
+  price: string;
+  compareAt: string;
+  boxQty: string;
+  weight: string;
+  length: string;
+  width: string;
+  height: string;
+  stock?: number;
+  available?: number;
+};
+// Colunas da tabela de peso e medidas no computador: variação, peso, comprimento, largura, altura.
+const PACK_COLS = "lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]";
+/** 350 g → "0,35" (kg, como o formulário pede) */
+const gramsToKg = (g: number) => String(g / 1000).replace(".", ",");
 
 let nextKey = 1;
-const newVariant = (): VariantRow => ({ key: nextKey++, id: "", sku: "", label: "", price: "", compareAt: "", boxQty: "1" });
+const newVariant = (): VariantRow => ({ key: nextKey++, id: "", sku: "", label: "", price: "", compareAt: "", boxQty: "1", weight: "", length: "", width: "", height: "" });
 const newSpec = (): SpecRow => ({ key: nextKey++, label: "", value: "" });
 
 function initial(p?: AdminProduct) {
@@ -53,6 +71,10 @@ function initial(p?: AdminProduct) {
           price: centsToInput(v.price),
           compareAt: centsToInput(v.compareAt),
           boxQty: String(v.boxQty),
+          weight: v.pack ? gramsToKg(v.pack.weightG) : "",
+          length: v.pack ? String(v.pack.lengthCm) : "",
+          width: v.pack ? String(v.pack.widthCm) : "",
+          height: v.pack ? String(v.pack.heightCm) : "",
           stock: v.stock,
           available: v.available,
         }))
@@ -259,6 +281,40 @@ export function ProductForm({ product, suggestions }: { product?: AdminProduct; 
         <button type="button" className={`${BTN_SECONDARY} w-full sm:w-auto`} onClick={() => set("variants", [...values.variants, newVariant()])}>
           <Plus className="size-5" aria-hidden="true" /> Adicionar variação
         </button>
+      </Section>
+
+      <Section
+        title="Frete: peso e medidas"
+        intro="Da embalagem em que o produto é enviado, por variação. A loja usa para calcular o frete. Pode deixar em branco e preencher depois, mas sem isso o frete daquela variação não pode ser calculado."
+      >
+        <div className="space-y-3 lg:space-y-0 lg:overflow-hidden lg:rounded-xl lg:border lg:border-line">
+          <div aria-hidden="true" className={`hidden bg-surface-2 px-3 py-2 text-sm font-medium text-ink-soft lg:grid ${PACK_COLS}`}>
+            <span>Variação</span>
+            <span>Peso (kg)</span>
+            <span>Comprimento (cm)</span>
+            <span>Largura (cm)</span>
+            <span>Altura (cm)</span>
+          </div>
+          {values.variants.map((v, i) => {
+            const e = (f: string) => errors[`variant-${i}-${f}`];
+            const name = [v.sku.trim() || `Variação ${i + 1}`, multi && v.label.trim() ? v.label.trim() : null].filter(Boolean).join(" · ");
+            return (
+              <fieldset key={v.key} className="min-w-0 rounded-xl border border-line p-3 lg:rounded-none lg:border-0 lg:border-t lg:px-3 lg:py-2.5">
+                <legend className="px-1 font-medium lg:sr-only">Peso e medidas: {name}</legend>
+                <div className={`grid grid-cols-2 gap-3 lg:items-start lg:gap-2 ${PACK_COLS}`}>
+                  <p aria-hidden="true" className="hidden min-h-11 items-center truncate font-medium lg:flex">
+                    {name}
+                  </p>
+                  <Cell label="Peso (kg)" name="weight" inputMode="decimal" value={v.weight} onChange={(ev) => setVariant(i, { weight: ev.target.value })} error={e("weight")} placeholder="0,350" />
+                  <Cell label="Comprimento (cm)" name="length" inputMode="decimal" value={v.length} onChange={(ev) => setVariant(i, { length: ev.target.value })} error={e("length")} />
+                  <Cell label="Largura (cm)" name="width" inputMode="decimal" value={v.width} onChange={(ev) => setVariant(i, { width: ev.target.value })} error={e("width")} />
+                  <Cell label="Altura (cm)" name="height" inputMode="decimal" value={v.height} onChange={(ev) => setVariant(i, { height: ev.target.value })} error={e("height")} />
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+        <p className="text-sm text-muted">Peso em kg (ex.: 0,350 para 350 g). Medidas da caixa ou embalagem em centímetros.</p>
       </Section>
 
       <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] -mx-1 flex flex-col gap-2 bg-surface-2/95 px-1 py-3 sm:bottom-0 sm:flex-row">
